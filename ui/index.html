@@ -1188,17 +1188,27 @@ function onFileLoad(event) {
   if (!file) return;
   const reader = new FileReader();
 
-  // ── .lua file: display in output panel (no block conversion) ──
+  // ── .lua file: parse back to Blockly blocks ──────────────────────────────────
   if (file.name.endsWith('.lua')) {
     reader.onload = (e) => {
       const lua = e.target.result;
-      document.getElementById('luaOutput').innerHTML = highlight(lua);
-      showTab('lua');
-      // Extract script name from file name
       const baseName = file.name.replace(/\.lua$/, '');
       if (baseName) document.getElementById('scriptName').value = baseName;
-      document.getElementById('statusBar').textContent =
-        '✓ Lua file loaded: ' + file.name + ' (' + lua.split('\n').length + ' lines) — read-only view';
+      try {
+        const state = parseLuaToBlocklyState(lua);
+        workspace.clear();
+        Blockly.serialization.workspaces.load(state, workspace);
+        workspace.scrollCenter();
+        generateAndShow();
+        document.getElementById('statusBar').textContent =
+          '✓ Lua parsed and loaded as blocks: ' + file.name;
+      } catch (parseErr) {
+        // Fallback: show as highlighted read-only if parsing fails
+        document.getElementById('luaOutput').innerHTML = highlight(lua);
+        showTab('lua');
+        document.getElementById('statusBar').textContent =
+          '⚠ Parse warning: ' + parseErr.message + ' — showing Lua source';
+      }
     };
     reader.readAsText(file);
     event.target.value = '';
@@ -1424,6 +1434,257 @@ function loadExample() {
   generateAndShow();
 }
 
+
+// ──────────────────────────────────────────────────────────────────────────────
+// LUA → BLOCKLY PARSER
+// Converts a StarMade-NPCCreator-generated .lua script back into Blockly blocks.
+// ──────────────────────────────────────────────────────────────────────────────
+
+function parseLuaToBlocklyState(lua) {
+
+  // ── Step 1: Extract hook function bodies (before create()) ──────────────────
+  const hookBodies = {};
+  const createIdx = lua.search(/\nfunction create\s*\(/);
+  const beforeCreate = createIdx >= 0 ? lua.slice(0, createIdx) : lua;
+  // Match: function name(dialogObject)\n  body\nend
+  const hookFnRe = /^function\s+(\w+)\s*\(dialogObject[^)]*\)\n([\s\S]+?)\nend/gm;
+  let hm;
+  while ((hm = hookFnRe.exec(beforeCreate)) !== null) {
+    hookBodies[hm[1]] = hm[2].trim();
+  }
+
+  // ── Step 2: Extract create() body ─────────────────────────────────────────
+  const createMatch = lua.match(/function create\s*\(dialogObject,\s*bindings\)([\s\S]+?)^end/m);
+  if (!createMatch) throw new Error('No create() function found in script.');
+  const createBody = createMatch[1];
+
+  // ── Step 3: Parse create() body line by line ─────────────────────────────
+  const nodes     = {};   // varName → { text, ms }
+  const nodeHooks = {};   // nodeVar → hookFuncName
+  const addCalls  = [];   // { fromVar, targetVar, label }
+  let   rootVar   = null;
+
+  for (const rawLine of createBody.split('\n')) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith('--')) continue;
+
+    // TextEntry declaration: local VAR = luajava.newInstance(TextEntry, format(...), ms)
+    const nodeM = line.match(/^local\s+(\w+)\s*=\s*luajava\.newInstance\s*\(\s*(?:TextEntry|"org\.schema\.game\.common\.data\.player\.dialog\.TextEntry")\s*,\s*/);
+    if (nodeM) {
+      const varName = nodeM[1];
+      const rest = line.slice(line.indexOf(nodeM[0]) + nodeM[0].length);
+      // Extract the quoted format string (first arg to dialogObject:format(...))
+      const textM = rest.match(/format\s*\(\s*"((?:[^"\\]|\\.)*)"/);
+      if (textM) {
+        let raw = textM[1]
+          .replace(/\\n/g, '\n')
+          .replace(/\\"/g, '"')
+          .replace(/\\\\/g, '\\');
+
+        // Collect method names that appear as extra args, in order
+        const argSection = rest.slice(rest.indexOf(textM[0]) + textM[0].length);
+        const argRe = /dialogObject:(\w+)\s*\(\s*\)/g;
+        const argOrder = [];
+        let am;
+        while ((am = argRe.exec(argSection)) !== null) {
+          argOrder.push(am[1]);
+        }
+
+        // Replace each %s in order with the corresponding placeholder
+        const phMap = {
+          'getConverationParterName':        '{name}',
+          'getConverationPartnerAffinity':   '{partner}',
+          'getConverationPartnerFactionName':'{faction}',
+          'getConverationPartnerOwnerName':  '{owner}',
+          'getOwnName':                      '{self}',
+        };
+        for (const methodName of argOrder) {
+          const ph = phMap[methodName] || '%s';
+          raw = raw.replace('%s', ph);
+        }
+
+        const msM = rest.match(/,\s*(\d+)\s*\)\s*$/);
+        nodes[varName] = { text: raw, ms: msM ? parseInt(msM[1]) : 2000 };
+      }
+      continue;
+    }
+
+    // factory:setRootEntry(VAR)
+    const rootM = line.match(/^factory:setRootEntry\s*\(\s*(\w+)\s*\)/);
+    if (rootM) { rootVar = rootM[1]; continue; }
+
+    // VAR:setHook(hook_FUNC)
+    const hookM = line.match(/^(\w+):setHook\s*\(\s*hook_(\w+)\s*\)/);
+    if (hookM) { nodeHooks[hookM[1]] = hookM[2]; continue; }
+
+    // VAR:add(TARGET, dialogObject:format("label"...))
+    const addM = line.match(/^(\w+):add\s*\(\s*(\w+)\s*,\s*dialogObject:format\s*\(\s*"((?:[^"\\]|\\.)*)"/);
+    if (addM) {
+      const [, fromVar, targetVar, rawLabel] = addM;
+      const label = restorePlaceholders(
+        rawLabel.replace(/\\n/g, '\n').replace(/\\"/g, '"').replace(/\\\\/g, '\\'),
+        line
+      );
+      addCalls.push({ fromVar, targetVar, label });
+      continue;
+    }
+  }
+
+  if (!rootVar) throw new Error('Could not find factory:setRootEntry() in script.');
+
+  // ── Step 4: Build choice map ───────────────────────────────────────────────
+  const choiceMap = {}; // fromVar → [{targetVar, label}]
+  for (const c of addCalls) {
+    if (!choiceMap[c.fromVar]) choiceMap[c.fromVar] = [];
+    choiceMap[c.fromVar].push({ targetVar: c.targetVar, label: c.label });
+  }
+
+  // ── Step 5: Reconstruct Blockly state from root ────────────────────────────
+  const rootNode = nodes[rootVar] || { text: '', ms: 2000 };
+  const greetingBlock = {
+    type: 'npc_greeting',
+    x: 30, y: 30,
+    fields: { TEXT: unpackBrackets(rootNode.text), MS: rootNode.ms }
+  };
+
+  const rootChoices = choiceMap[rootVar] || [];
+  if (rootChoices.length > 0) {
+    const chain = buildChoiceChain(rootChoices, nodes, nodeHooks, hookBodies, choiceMap);
+    if (chain) greetingBlock.inputs = { CHOICES: { block: chain } };
+  }
+
+  return { blocks: { languageVersion: 0, blocks: [greetingBlock] } };
+}
+
+// ── Placeholder restoration ────────────────────────────────────────────────────
+function restorePlaceholders(text, context) {
+  const map = [
+    ['getConverationParterName',        '{name}'],
+    ['getConverationPartnerAffinity',   '{partner}'],
+    ['getConverationPartnerFactionName','{faction}'],
+    ['getConverationPartnerOwnerName',  '{owner}'],
+    ['getOwnName',                      '{self}'],
+  ];
+  let out = text;
+  for (const [fn, ph] of map) {
+    if (context.includes(fn)) out = out.replace('%s', ph);
+  }
+  return out;
+}
+
+// ── Strip [brackets] added by builder for sub-menu nodes ──────────────────────
+function unpackBrackets(t) {
+  return (t.startsWith('[') && t.endsWith(']')) ? t.slice(1, -1) : t;
+}
+
+// ── Build a chain of choice blocks from an add() call list ───────────────────
+function buildChoiceChain(list, nodes, nodeHooks, hookBodies, choiceMap) {
+  if (!list.length) return null;
+  const [first, ...rest] = list;
+  const block = buildSingleChoice(first, nodes, nodeHooks, hookBodies, choiceMap);
+  if (block && rest.length > 0) {
+    const next = buildChoiceChain(rest, nodes, nodeHooks, hookBodies, choiceMap);
+    if (next) block.next = { block: next };
+  }
+  return block;
+}
+
+// ── Reconstruct a single choice from its target node ──────────────────────────
+function buildSingleChoice(choice, nodes, nodeHooks, hookBodies, choiceMap) {
+  const { targetVar, label } = choice;
+  const hookFn     = nodeHooks[targetVar];
+  const subChoices = choiceMap[targetVar] || [];
+  const isTerminal = !hookFn && subChoices.length === 0;
+
+  // Terminal node (no hook, no sub-choices) → GoBack / Goodbye button
+  if (isTerminal) {
+    return { type: 'npc_goback', fields: { LABEL: label } };
+  }
+
+  // Node has a hook → direct action block (hire, sell, etc.)
+  if (hookFn) {
+    const body        = hookBodies[hookFn] || '';
+    const actionBlock = buildActionBlock(hookFn, body);
+    const block = { type: 'npc_choice', fields: { LABEL: label } };
+    if (actionBlock) block.inputs = { ACTIONS: { block: actionBlock } };
+    return block;
+  }
+
+  // Node has sub-choices (sub-menu container) — nest them as CHOICES
+  if (subChoices.length > 0) {
+    const block = { type: 'npc_choice', fields: { LABEL: unpackBrackets(label) } };
+    const nestedChain = buildChoiceChain(subChoices, nodes, nodeHooks, hookBodies, choiceMap);
+    // Wrap the nested choices in a greeting-like container
+    // (npc_choice can hold choices in ACTIONS statement input)
+    if (nestedChain) block.inputs = { ACTIONS: { block: nestedChain } };
+    return block;
+  }
+
+  return { type: 'npc_choice', fields: { LABEL: label } };
+}
+
+// ── Identify action block type from hook function body ────────────────────────
+function buildActionBlock(funcName, body) {
+  // Extract first numeric arg (price, typeId, etc.)
+  const numM   = body.match(/\((\d+)/);
+  const price  = numM ? parseInt(numM[1]) : 0;
+
+  // Extract 3 coordinate args: (x, y, z)
+  const coordM = body.match(/\((-?\d+)\s*,\s*(-?\d+)\s*,\s*(-?\d+)/);
+  const cx = coordM ? parseInt(coordM[1]) : 0;
+  const cy = coordM ? parseInt(coordM[2]) : 0;
+  const cz = coordM ? parseInt(coordM[3]) : 0;
+
+  // Crew actions
+  if (/hireConverationPartner/.test(body))
+    return { type: 'npc_hire', fields: { PRICE: price, SUCCESS: "I'm honoured to work with you, commander!" } };
+  if (/unhireConverationPartner/.test(body))
+    return { type: 'npc_unhire', fields: { SUCCESS: 'Yes, commander!' } };
+  if (/spawnCrew/.test(body))
+    return { type: 'npc_spawn_crew', fields: { PRICE: price } };
+
+  // Items (order matters — check longer names first)
+  const itemMap = [
+    ['giveTransporterMarkerBeam', 'transporter'],
+    ['givePowerSupplyBeam',       'power'],
+    ['giveRocketLauncher',        'rocket'],
+    ['giveSniperRifle',           'sniper'],
+    ['giveLaserWeapon',           'laser'],
+    ['giveHealingBeam',           'healing'],
+    ['giveMarkerBeam',            'marker'],
+    ['giveGrappleBeam',           'grapple'],
+    ['giveTorchBeam',             'torch'],
+    ['giveBuildProhibiter',       'prohibiter'],
+    ['giveFlashLight',            'flashlight'],
+    ['giveHelmet',                'helmet'],
+  ];
+  for (const [fn, item] of itemMap) {
+    if (body.includes(fn))
+      return { type: 'npc_sell_item', fields: { ITEM: item, PRICE: price } };
+  }
+
+  // Give block type
+  const gtM = body.match(/giveType\s*\((\d+)\s*,\s*(\d+)\)/);
+  if (gtM)
+    return { type: 'npc_give_type', fields: { TYPE_ID: parseInt(gtM[1]), COUNT: parseInt(gtM[2]), FREE: 'TRUE' } };
+
+  // World actions
+  if (/activateBlockSwitch/.test(body))
+    return { type: 'npc_activate_block', fields: { X: cx, Y: cy, Z: cz, STATE: 'toggle' } };
+  if (/activateBlock/.test(body)) {
+    const stM = body.match(/(true|false)\s*\)/);
+    return { type: 'npc_activate_block', fields: { X: cx, Y: cy, Z: cz, STATE: stM ? stM[1] : 'true' } };
+  }
+  if (/moveTo/.test(body))
+    return { type: 'npc_move_to', fields: { X: cx, Y: cy, Z: cz } };
+
+  // Custom hook (SQLite or arbitrary Lua)
+  const bodyOneLine = body.replace(/\n/g, '; ').trim();
+  return {
+    type: 'npc_custom_hook',
+    fields: { NAME: funcName, BODY: bodyOneLine, SUCCESS: 'Done!', FAIL: 'Something went wrong.' }
+  };
+}
 
 // ──────────────────────────────────────────────────────────────────────────────
 // INIT BLOCKLY
