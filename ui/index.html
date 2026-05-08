@@ -283,6 +283,12 @@
   <category name="⚡ World" colour="#9b59b6">
     <block type="npc_activate_block"></block>
     <block type="npc_move_to"></block>
+    <block type="npc_destroy_ship"></block>
+    <block type="npc_give_gravity"></block>
+    <block type="npc_call_tutorial"></block>
+  </category>
+  <category name="🔗 Sequences" colour="#e67e22">
+    <block type="npc_auto_sequence"></block>
   </category>
   <category name="💾 SQLite" colour="#3498db">
     <block type="npc_sqlite_table"></block>
@@ -329,7 +335,8 @@ Blockly.Blocks['npc_greeting'] = {
     this.setTooltip(
       'GREETING\nOpening text shown when player talks to this NPC.\n\n' +
       'Placeholders:\n  {name}    NPC display name\n  {partner} NPC affinity\n' +
-      '  {faction} NPC faction\n  {owner}   NPC commander\n  {self}    Player name\n\n' +
+      '  {faction} NPC faction\n  {owner}   NPC commander\n  {self}    Player name\n' +
+      '  {entity}  Entity name (dialogObject:getEntity():getName())\n\n' +
       'Attach Choice blocks to add player options.\n' +
       '"Show for (ms)" sets the display duration.'
     );
@@ -481,6 +488,97 @@ Blockly.Blocks['npc_give_type'] = {
       'Common IDs: 1=Ship Core, 2=Thruster, 598=Grey Armor, 263=Std Armor\n\n' +
       'Check "free?" to skip credit cost.\n\n' +
       'Return codes:\n  0  success\n  -1 not enough credits\n  -2 inventory full'
+    );
+  }
+};
+
+// ── npc_destroy_ship ──────────────────────────────────────────────────────────
+Blockly.Blocks['npc_destroy_ship'] = {
+  init() {
+    this.appendDummyInput()
+      .appendField('💥 Destroy ship UID')
+      .appendField(new Blockly.FieldTextInput('ENTITY_SHIP_target'), 'UID');
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour('#9b59b6');
+    this.setTooltip(
+      'DESTROY SHIP\nDestroys an entity by its unique ID.\n\n' +
+      'UID: the full entity ID, e.g. ENTITY_SHIP_tutorialShip00\n\n' +
+      'Return codes:\n  0  entity destroyed\n  -1 entity not found\n\n' +
+      'WARNING: this is permanent and cannot be undone.'
+    );
+  }
+};
+
+// ── npc_give_gravity ───────────────────────────────────────────────────────────
+Blockly.Blocks['npc_give_gravity'] = {
+  init() {
+    this.appendDummyInput()
+      .appendField('🌍 Set gravity')
+      .appendField(new Blockly.FieldDropdown([['ON (normal)', 'true'], ['OFF (zero-g)', 'false']]), 'STATE');
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour('#9b59b6');
+    this.setTooltip(
+      'SET GRAVITY\nToggles gravity for the player character.\n\n' +
+      'ON  → normal gravity (walking)\n' +
+      'OFF → zero-gravity (floating)\n\n' +
+      'Used in tutorial scripts to give the player gravity at start of conversation.'
+    );
+  }
+};
+
+// ── npc_call_tutorial ─────────────────────────────────────────────────────────
+Blockly.Blocks['npc_call_tutorial'] = {
+  init() {
+    this.appendDummyInput()
+      .appendField('📖 Call tutorial')
+      .appendField(new Blockly.FieldTextInput('TutorialBasics01ActivateGrav'), 'NAME');
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour('#9b59b6');
+    this.setTooltip(
+      'CALL TUTORIAL\nTriggers a named tutorial step.\n\n' +
+      'Known tutorial IDs:\n' +
+      '  TutorialBasics01ActivateGrav\n' +
+      '  TutorialBasics01-B-Talk\n' +
+      '  TutorialBasics02ShipBasics\n' +
+      '  TutorialBasics03ShipBuilding\n' +
+      '  TutorialBasics04ShipConnection\n' +
+      '  TutorialBasics05ManualConnection\n' +
+      '  TutorialBasics06Combination\n' +
+      '  TutorialBasics07PersonalWeapons\n' +
+      '  TutorialBasics08Crafting'
+    );
+  }
+};
+
+// ── npc_auto_sequence ─────────────────────────────────────────────────────────
+Blockly.Blocks['npc_auto_sequence'] = {
+  init() {
+    this.appendDummyInput()
+      .appendField('🔗 Auto Sequence name')
+      .appendField(new Blockly.FieldTextInput('mySequence'), 'NAME');
+    this.appendDummyInput()
+      .appendField('Description')
+      .appendField(new Blockly.FieldTextInput('NPC moves to position, opens door, calls tutorial'), 'DESC');
+    this.appendDummyInput()
+      .appendField('Lua body (steps separated by ;)')
+      .appendField(new Blockly.FieldTextInput('dialogObject:moveTo(10,0,5); dialogObject:activateBlock(6,0,5,false)'), 'BODY');
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour('#e67e22');
+    this.setTooltip(
+      'AUTO SEQUENCE\nA chain of actions that run automatically without player input.\n\n' +
+      'Used in vanilla StarMade via setFollowUp() / setCondition() chains.\n\n' +
+      'Examples of automated sequences:\n' +
+      '  - NPC walks to position, opens a door, calls tutorial\n' +
+      '  - Give items, destroy old ship, trigger tutorial step\n' +
+      '  - Activate block A, deactivate B, move NPC to C\n\n' +
+      'In the generator, this creates a custom hook function that chains\n' +
+      'multiple dialogObject calls in sequence.\n\n' +
+      'Lua body: separate statements with semicolons.\n' +
+      'The last statement should be: return 0'
     );
   }
 };
@@ -885,6 +983,57 @@ function processActionBlock(block, parentVarName) {
       const waitVn = makeNode('Moving...');
       const waitNode = getNode(waitVn);
       waitNode.hook = hookFn;
+      return waitVn;
+    }
+    case 'npc_destroy_ship': {
+      const uid  = block.getFieldValue('UID');
+      const hookFn = `destroyShipHook_${uid.replace(/\W/g,'_')}`;
+      registerHook(hookFn, [`return dialogObject:destroyShip("${uid}");`]);
+      const waitVn = makeNode('...');
+      const successVn = makeNode('Done!');
+      const failVn = makeNode('Entity not found.');
+      const waitNode = getNode(waitVn);
+      waitNode.hook = hookFn;
+      waitNode.reactions = [{ code: 0, target: successVn }, { code: -1, target: failVn }];
+      return waitVn;
+    }
+    case 'npc_give_gravity': {
+      const state = block.getFieldValue('STATE');
+      const hookFn = `giveGravityHook_${state}`;
+      registerHook(hookFn, [`return dialogObject:giveGravity(${state});`]);
+      const waitVn = makeNode('...');
+      const successVn = makeNode('Gravity ' + (state === 'true' ? 'enabled.' : 'disabled.'));
+      const waitNode = getNode(waitVn);
+      waitNode.hook = hookFn;
+      waitNode.reactions = [{ code: 0, target: successVn }];
+      return waitVn;
+    }
+    case 'npc_call_tutorial': {
+      const name = block.getFieldValue('NAME');
+      const hookFn = `tutorialHook_${name.replace(/\W/g,'_')}`;
+      registerHook(hookFn, [`return dialogObject:callTutorial("${name}");`]);
+      const waitVn = makeNode('...');
+      const successVn = makeNode('Tutorial started!');
+      const waitNode = getNode(waitVn);
+      waitNode.hook = hookFn;
+      waitNode.reactions = [{ code: 0, target: successVn }];
+      return waitVn;
+    }
+    case 'npc_auto_sequence': {
+      const seqName = block.getFieldValue('NAME');
+      const seqBody = block.getFieldValue('BODY');
+      const hookFn = `${seqName.replace(/\W/g,'_')}Hook`;
+      // Split body by ; and generate a Lua function that calls each in sequence
+      const steps = seqBody.split(';').map(s => s.trim()).filter(Boolean);
+      const body = steps.length > 0
+        ? [...steps, 'return 0']
+        : ['return 0'];
+      registerHook(hookFn, body);
+      const waitVn = makeNode('Running sequence...');
+      const successVn = makeNode('Sequence complete!');
+      const waitNode = getNode(waitVn);
+      waitNode.hook = hookFn;
+      waitNode.reactions = [{ code: 0, target: successVn }];
       return waitVn;
     }
     case 'npc_sqlite_get': {
@@ -1509,7 +1658,8 @@ function parseLuaToBlocklyState(lua) {
 
     // ── TextEntry node declaration ───────────────────────────────────────────
     // Both `local VAR =` (NPCCreator) and `VAR =` (vanilla) are supported
-    const nodeM = line.match(/(?:local\s+)?(\w+)\s*=\s*luajava\.newInstance\s*\(\s*(?:"[^"]*TextEntry[^"]*"|TextEntry)\s*,\s*/);
+    // CancelDialogEntry and TextEntry both create dialog nodes
+    const nodeM = line.match(/(?:local\s+)?(\w+)\s*=\s*luajava\.newInstance\s*\(\s*(?:"[^"]*(?:TextEntry|CancelDialogEntry)[^"]*"|TextEntry|CancelDialogEntry)\s*,\s*/);
     if (nodeM) {
       const varName = nodeM[1];
       // Safety guard (should not be needed if hookInstM2 runs first)
@@ -1521,16 +1671,21 @@ function parseLuaToBlocklyState(lua) {
         let raw = textM[1].replace(/\\n/g,'\n').replace(/\\"/g,'"').replace(/\\\\/g,'\\');
         // Collect dialogObject:method() args in order after the format string
         const afterQuote = line.slice(line.indexOf(textM[0]) + textM[0].length);
-        const argRe2 = /dialogObject:(\w+)\s*\(\s*\)/g;
+        // Match dialogObject:method() OR dialogObject:getEntity():method()
+        const argRe2 = /dialogObject:(?:\w+\s*\(\s*\)\s*:\s*)?(\w+)\s*\(\s*\)/g;
         let am2;
         const argOrder = [];
-        while ((am2 = argRe2.exec(afterQuote)) !== null) argOrder.push(am2[1]);
+        while ((am2 = argRe2.exec(afterQuote)) !== null) {
+          // Skip 'getEntity' itself — we want the final method name
+          if (am2[1] !== 'getEntity') argOrder.push(am2[1]);
+        }
         const phMap = {
           'getConverationParterName':        '{name}',
           'getConverationPartnerAffinity':   '{partner}',
           'getConverationPartnerFactionName':'{faction}',
           'getConverationPartnerOwnerName':  '{owner}',
           'getOwnName':                      '{self}',
+          'getName':                         '{entity}',  // dialogObject:getEntity():getName()
         };
         for (const m of argOrder) raw = raw.replace('%s', phMap[m] || '%s');
         text = raw;
@@ -1748,17 +1903,27 @@ function buildActionBlock(funcName, body, boundParams, argDefs) {
     const tutName = (boundParams[0] || '').replace(/"/g, '') ||
                     (body.match(/"([^"]+)"/) ? body.match(/"([^"]+)"/)[1] : 'tutorial');
     return {
-      type: 'npc_custom_hook',
-      fields: { NAME: funcName, BODY: `return dialogObject:callTutorial("${tutName}");`, SUCCESS: 'OK!', FAIL: '...' }
+      type: 'npc_call_tutorial',
+      fields: { NAME: tutName }
+    };
+  }
+
+  // ── destroyShip ──────────────────────────────────────────────────────────
+  if (/destroyShip/.test(body) || funcName.toLowerCase().includes('destroyship') || funcName.toLowerCase().includes('destroyship')) {
+    const uid = (boundParams[0] || '').replace(/"/g,'') ||
+                (body.match(/"([^"]+)"/) ? body.match(/"([^"]+)"/)[1] : 'ENTITY_SHIP_target');
+    return {
+      type: 'npc_destroy_ship',
+      fields: { UID: uid }
     };
   }
 
   // ── giveGravity ───────────────────────────────────────────────────────────
-  if (/giveGravity/.test(body) || funcName.includes('Gravity')) {
+  if (/giveGravity/.test(body) || funcName.includes('Gravity') || funcName.includes('Grav')) {
     const gravVal = boundParams[0] === 'false' ? 'false' : 'true';
     return {
-      type: 'npc_custom_hook',
-      fields: { NAME: funcName, BODY: `return dialogObject:giveGravity(${gravVal});`, SUCCESS: 'Gravity set!', FAIL: '...' }
+      type: 'npc_give_gravity',
+      fields: { STATE: gravVal }
     };
   }
 
