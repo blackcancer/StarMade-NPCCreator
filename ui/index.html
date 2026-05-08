@@ -1,0 +1,1191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>StarMade NPC Creator — Visual Editor</title>
+
+  <!-- Blockly from CDN -->
+  <script src="https://unpkg.com/blockly/blockly.min.js"></script>
+
+  <style>
+    /* ── Reset & base ───────────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: #1a1a2e;
+      color: #e0e0e0;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ── Header ─────────────────────────────────────────────────────────────── */
+    header {
+      background: #16213e;
+      border-bottom: 2px solid #0f3460;
+      padding: 10px 20px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-shrink: 0;
+    }
+    header h1 {
+      font-size: 1.2rem;
+      color: #e94560;
+      font-weight: 700;
+      letter-spacing: 1px;
+    }
+    header .subtitle {
+      font-size: 0.75rem;
+      color: #888;
+    }
+    .spacer { flex: 1; }
+
+    /* ── Toolbar buttons ─────────────────────────────────────────────────────── */
+    .btn {
+      padding: 7px 16px;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .btn-primary { background: #e94560; color: #fff; }
+    .btn-primary:hover { background: #c73652; }
+    .btn-secondary { background: #0f3460; color: #e0e0e0; }
+    .btn-secondary:hover { background: #1a4d8c; }
+    .btn-success { background: #27ae60; color: #fff; }
+    .btn-success:hover { background: #1e8449; }
+
+    /* ── Script name field ───────────────────────────────────────────────────── */
+    #scriptName {
+      background: #0f3460;
+      border: 1px solid #1a4d8c;
+      border-radius: 6px;
+      color: #e0e0e0;
+      padding: 6px 12px;
+      font-size: 0.85rem;
+      width: 200px;
+    }
+
+    /* ── Main layout ─────────────────────────────────────────────────────────── */
+    .main {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    /* ── Blockly workspace ───────────────────────────────────────────────────── */
+    #blocklyDiv {
+      flex: 1;
+      height: 100%;
+    }
+
+    /* ── Output panel ────────────────────────────────────────────────────────── */
+    .output-panel {
+      width: 420px;
+      background: #0d1117;
+      border-left: 2px solid #0f3460;
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+    }
+    .output-tabs {
+      display: flex;
+      background: #161b22;
+      border-bottom: 1px solid #21262d;
+    }
+    .tab {
+      padding: 10px 18px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      color: #8b949e;
+      border-bottom: 2px solid transparent;
+      transition: all 0.15s;
+    }
+    .tab.active {
+      color: #58a6ff;
+      border-bottom-color: #58a6ff;
+    }
+    .tab-content { display: none; flex: 1; overflow: hidden; }
+    .tab-content.active { display: flex; flex-direction: column; flex: 1; }
+    pre#luaOutput {
+      flex: 1;
+      overflow: auto;
+      padding: 16px;
+      font-family: 'Fira Code', 'Consolas', monospace;
+      font-size: 0.78rem;
+      line-height: 1.6;
+      color: #c9d1d9;
+      white-space: pre;
+    }
+    /* Lua syntax colouring (basic) */
+    .kw   { color: #ff79c6; }
+    .str  { color: #f1fa8c; }
+    .cmt  { color: #6272a4; font-style: italic; }
+    .fn   { color: #50fa7b; }
+    .num  { color: #bd93f9; }
+
+    /* ── Status bar ──────────────────────────────────────────────────────────── */
+    #statusBar {
+      padding: 6px 16px;
+      font-size: 0.75rem;
+      background: #161b22;
+      border-top: 1px solid #21262d;
+      color: #8b949e;
+      flex-shrink: 0;
+    }
+
+    /* ── Blockly custom scrollbar ─────────────────────────────────────────────── */
+    .blocklyScrollbarHandle { fill: #0f3460; }
+    .blocklyScrollbarBackground { fill: #1a1a2e; }
+
+    /* ── Copy badge ──────────────────────────────────────────────────────────── */
+    #copyBadge {
+      display: none;
+      position: fixed;
+      bottom: 40px;
+      right: 440px;
+      background: #27ae60;
+      color: #fff;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      animation: fadeOut 2s forwards;
+    }
+    @keyframes fadeOut {
+      0%   { opacity: 1; }
+      70%  { opacity: 1; }
+      100% { opacity: 0; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Header ──────────────────────────────────────────────────────────────── -->
+<header>
+  <div>
+    <h1>⚙ StarMade NPC Creator</h1>
+    <div class="subtitle">Visual Lua dialog builder</div>
+  </div>
+  <div class="spacer"></div>
+  <label style="font-size:0.8rem;color:#888;margin-right:4px">Script name:</label>
+  <input id="scriptName" type="text" value="my-npc" placeholder="my-npc" />
+  <button class="btn btn-secondary" onclick="clearWorkspace()">🗑 Clear</button>
+  <button class="btn btn-secondary" onclick="loadExample()">📄 Example</button>
+  <button class="btn btn-primary" onclick="generateAndShow()">▶ Generate Lua</button>
+  <button class="btn btn-success" onclick="downloadLua()">⬇ Download .lua</button>
+</header>
+
+<!-- ── Main ───────────────────────────────────────────────────────────────── -->
+<div class="main">
+  <div id="blocklyDiv"></div>
+
+  <!-- Output panel -->
+  <div class="output-panel">
+    <div class="output-tabs">
+      <div class="tab active" onclick="showTab('lua')">Lua Output</div>
+      <div class="tab" onclick="showTab('help')">Help</div>
+    </div>
+
+    <div class="tab-content active" id="tab-lua">
+      <pre id="luaOutput">-- Click "▶ Generate Lua" to see output here.</pre>
+    </div>
+
+    <div class="tab-content" id="tab-help">
+      <pre id="luaOutput" style="padding:16px;font-size:0.8rem;white-space:pre-wrap;color:#8b949e">
+<span style="color:#58a6ff;font-weight:700">Block Reference</span>
+
+<span style="color:#e94560">📋 Dialog Structure</span>
+  NPC Script     — root container (one per script)
+  Greeting       — opening text shown to player
+  Choice         — a button option the player can click
+  Go Back        — adds a "back" button to previous menu
+
+<span style="color:#27ae60">👥 Crew Actions</span>
+  Hire Crew      — player pays to hire this NPC
+  Dismiss Crew   — remove NPC from player's team
+
+<span style="color:#f39c12">🛒 Items to Sell</span>
+  Sell Item      — give a weapon/tool for credits
+  Give Block     — give any block type by ID
+
+<span style="color:#9b59b6">⚡ World Actions</span>
+  Activate Block — toggle a block on/off
+  Move NPC To    — NPC walks to block coordinates
+
+<span style="color:#3498db">💾 SQLite State</span>
+  SQLite Table   — define a persistent data table
+  Get Value      — read a value for this player
+  Set Value      — write a value for this player
+  Increment      — add N to a counter
+
+<span style="color:#e74c3c">🔧 Advanced</span>
+  Custom Hook    — write raw Lua code for a hook
+
+<span style="color:#888">Placeholders in text:</span>
+  {name}    → NPC's name
+  {partner} → NPC's affinity
+  {faction} → NPC's faction name
+  {owner}   → NPC's owner name
+  {self}    → Player's name
+      </pre>
+    </div>
+
+    <div id="statusBar">Ready — drag blocks from the toolbox to build your NPC dialog.</div>
+  </div>
+</div>
+
+<div id="copyBadge">✓ Copied!</div>
+
+<!-- ── Blockly toolbox XML ───────────────────────────────────────────────── -->
+<xml id="toolbox" style="display:none">
+  <category name="📋 Dialog" colour="#4a90d9">
+    <block type="npc_script"></block>
+    <block type="npc_greeting"></block>
+    <block type="npc_choice"></block>
+    <block type="npc_goback"></block>
+  </category>
+  <category name="👥 Crew" colour="#27ae60">
+    <block type="npc_hire"></block>
+    <block type="npc_unhire"></block>
+    <block type="npc_spawn_crew"></block>
+  </category>
+  <category name="🛒 Items" colour="#f39c12">
+    <block type="npc_sell_item"></block>
+    <block type="npc_give_type"></block>
+  </category>
+  <category name="⚡ World" colour="#9b59b6">
+    <block type="npc_activate_block"></block>
+    <block type="npc_move_to"></block>
+  </category>
+  <category name="💾 SQLite" colour="#3498db">
+    <block type="npc_sqlite_table"></block>
+    <block type="npc_sqlite_get"></block>
+    <block type="npc_sqlite_set"></block>
+    <block type="npc_sqlite_increment"></block>
+  </category>
+  <category name="🔧 Advanced" colour="#e74c3c">
+    <block type="npc_custom_hook"></block>
+  </category>
+</xml>
+
+<script>
+// ──────────────────────────────────────────────────────────────────────────────
+// BLOCK DEFINITIONS
+// ──────────────────────────────────────────────────────────────────────────────
+
+// ── npc_script ────────────────────────────────────────────────────────────────
+Blockly.Blocks['npc_script'] = {
+  init() {
+    this.appendDummyInput()
+      .appendField('🖹 NPC Script')
+      .appendField(new Blockly.FieldTextInput('my-npc'), 'NAME');
+    this.appendStatementInput('NODES').setCheck(null).appendField('Dialog');
+    this.setColour('#4a90d9');
+    this.setTooltip('Root container for the NPC dialog script.');
+    this.setDeletable(false);
+  }
+};
+
+// ── npc_greeting ─────────────────────────────────────────────────────────────
+Blockly.Blocks['npc_greeting'] = {
+  init() {
+    this.appendDummyInput()
+      .appendField('💬 Greeting')
+      .appendField(new Blockly.FieldTextInput('Hello {name}! I am {partner} of {faction}.'), 'TEXT');
+    this.appendDummyInput()
+      .appendField('Show for (ms)')
+      .appendField(new Blockly.FieldNumber(2000, 500, 30000, 500), 'MS');
+    this.appendStatementInput('CHOICES').setCheck(['npc_choice', 'npc_goback']).appendField('Choices');
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour('#4a90d9');
+    this.setTooltip('Opening text shown to the player.');
+  }
+};
+
+// ── npc_choice ───────────────────────────────────────────────────────────────
+Blockly.Blocks['npc_choice'] = {
+  init() {
+    this.appendDummyInput()
+      .appendField('📌 Choice label')
+      .appendField(new Blockly.FieldTextInput('What do you need?'), 'LABEL');
+    this.appendStatementInput('ACTIONS').setCheck(null).appendField('Action');
+    this.setPreviousStatement(true, ['npc_choice', 'npc_goback']);
+    this.setNextStatement(true, ['npc_choice', 'npc_goback']);
+    this.setColour('#4a90d9');
+    this.setTooltip('A choice button shown to the player.');
+  }
+};
+
+// ── npc_goback ────────────────────────────────────────────────────────────────
+Blockly.Blocks['npc_goback'] = {
+  init() {
+    this.appendDummyInput()
+      .appendField('↩ Go Back')
+      .appendField(new Blockly.FieldTextInput('Never mind.'), 'LABEL');
+    this.setPreviousStatement(true, ['npc_choice', 'npc_goback']);
+    this.setNextStatement(true, ['npc_choice', 'npc_goback']);
+    this.setColour('#4a90d9');
+    this.setTooltip('Adds a "back" button that returns to the previous menu.');
+  }
+};
+
+// ── npc_hire ──────────────────────────────────────────────────────────────────
+Blockly.Blocks['npc_hire'] = {
+  init() {
+    this.appendDummyInput()
+      .appendField('🤝 Hire crew — price')
+      .appendField(new Blockly.FieldNumber(50000, 0), 'PRICE')
+      .appendField('credits');
+    this.appendDummyInput().appendField('Success text')
+      .appendField(new Blockly.FieldTextInput("I'm honoured to work with you!"), 'SUCCESS');
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour('#27ae60');
+    this.setTooltip('Hire this NPC as crew for the given price.');
+  }
+};
+
+// ── npc_unhire ────────────────────────────────────────────────────────────────
+Blockly.Blocks['npc_unhire'] = {
+  init() {
+    this.appendDummyInput().appendField('👋 Dismiss crew');
+    this.appendDummyInput().appendField('Success text')
+      .appendField(new Blockly.FieldTextInput('Yes, commander!'), 'SUCCESS');
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour('#27ae60');
+    this.setTooltip('Dismiss this NPC from the player crew.');
+  }
+};
+
+// ── npc_spawn_crew ────────────────────────────────────────────────────────────
+Blockly.Blocks['npc_spawn_crew'] = {
+  init() {
+    this.appendDummyInput()
+      .appendField('➕ Spawn crew — price')
+      .appendField(new Blockly.FieldNumber(50000, 0), 'PRICE')
+      .appendField('credits');
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour('#27ae60');
+    this.setTooltip('Spawn a new crew member for the given price.');
+  }
+};
+
+// ── npc_sell_item ─────────────────────────────────────────────────────────────
+Blockly.Blocks['npc_sell_item'] = {
+  init() {
+    this.appendDummyInput()
+      .appendField('🛒 Sell')
+      .appendField(new Blockly.FieldDropdown([
+        ['Laser Pistol',       'laser'],
+        ['Sniper Rifle',       'sniper'],
+        ['Rocket Launcher',    'rocket'],
+        ['Helmet',             'helmet'],
+        ['Healing Beam',       'healing'],
+        ['Power Supply Beam',  'power'],
+        ['Marker Beam',        'marker'],
+        ['Transporter Beacon', 'transporter'],
+        ['Grapple Beam',       'grapple'],
+        ['Torch Beam',         'torch'],
+        ['Build Prohibiter',   'prohibiter'],
+        ['Flashlight',         'flashlight'],
+      ]), 'ITEM')
+      .appendField('—')
+      .appendField(new Blockly.FieldNumber(100000, 0), 'PRICE')
+      .appendField('credits');
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour('#f39c12');
+    this.setTooltip('Sell a weapon or tool to the player.');
+  }
+};
+
+// ── npc_give_type ─────────────────────────────────────────────────────────────
+Blockly.Blocks['npc_give_type'] = {
+  init() {
+    this.appendDummyInput()
+      .appendField('📦 Give block type')
+      .appendField(new Blockly.FieldNumber(1, 1), 'TYPE_ID')
+      .appendField('× count')
+      .appendField(new Blockly.FieldNumber(1, 1), 'COUNT')
+      .appendField('free? ')
+      .appendField(new Blockly.FieldCheckbox('TRUE'), 'FREE');
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour('#f39c12');
+    this.setTooltip('Give any block type by numeric ID (see BlockConfig.xml).');
+  }
+};
+
+// ── npc_activate_block ────────────────────────────────────────────────────────
+Blockly.Blocks['npc_activate_block'] = {
+  init() {
+    this.appendDummyInput()
+      .appendField('⚡ Activate block at X')
+      .appendField(new Blockly.FieldNumber(0), 'X')
+      .appendField('Y')
+      .appendField(new Blockly.FieldNumber(0), 'Y')
+      .appendField('Z')
+      .appendField(new Blockly.FieldNumber(0), 'Z')
+      .appendField('state')
+      .appendField(new Blockly.FieldDropdown([
+        ['ON', 'true'], ['OFF', 'false'], ['Toggle', 'toggle']
+      ]), 'STATE');
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour('#9b59b6');
+    this.setTooltip('Activate or deactivate a block at local coordinates.');
+  }
+};
+
+// ── npc_move_to ───────────────────────────────────────────────────────────────
+Blockly.Blocks['npc_move_to'] = {
+  init() {
+    this.appendDummyInput()
+      .appendField('🚶 Move NPC to X')
+      .appendField(new Blockly.FieldNumber(0), 'X')
+      .appendField('Y')
+      .appendField(new Blockly.FieldNumber(0), 'Y')
+      .appendField('Z')
+      .appendField(new Blockly.FieldNumber(0), 'Z');
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour('#9b59b6');
+    this.setTooltip('Make the NPC walk to the given block coordinates.');
+  }
+};
+
+// ── npc_sqlite_table ──────────────────────────────────────────────────────────
+Blockly.Blocks['npc_sqlite_table'] = {
+  init() {
+    this.appendDummyInput()
+      .appendField('💾 SQLite table')
+      .appendField(new Blockly.FieldTextInput('quest_state'), 'TABLE')
+      .appendField('DB path')
+      .appendField(new Blockly.FieldTextInput('/StarMade/server-database/npc.db'), 'DB');
+    this.appendDummyInput()
+      .appendField('Columns (SQL)')
+      .appendField(new Blockly.FieldTextInput('player TEXT PRIMARY KEY, done INTEGER DEFAULT 0'), 'COLS');
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour('#3498db');
+    this.setTooltip('Define a SQLite table for persistent NPC state.');
+  }
+};
+
+// ── npc_sqlite_get ────────────────────────────────────────────────────────────
+Blockly.Blocks['npc_sqlite_get'] = {
+  init() {
+    this.appendDummyInput()
+      .appendField('📖 SQLite GET from table')
+      .appendField(new Blockly.FieldTextInput('quest_state'), 'TABLE')
+      .appendField('column')
+      .appendField(new Blockly.FieldTextInput('done'), 'COL')
+      .appendField('default')
+      .appendField(new Blockly.FieldTextInput('"0"'), 'DEFAULT')
+      .appendField('→ var')
+      .appendField(new Blockly.FieldTextInput('_val'), 'VAR');
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour('#3498db');
+    this.setTooltip('Read a value from SQLite for the current player.');
+  }
+};
+
+// ── npc_sqlite_set ────────────────────────────────────────────────────────────
+Blockly.Blocks['npc_sqlite_set'] = {
+  init() {
+    this.appendDummyInput()
+      .appendField('✏️ SQLite SET table')
+      .appendField(new Blockly.FieldTextInput('quest_state'), 'TABLE')
+      .appendField('column')
+      .appendField(new Blockly.FieldTextInput('done'), 'COL')
+      .appendField('= value')
+      .appendField(new Blockly.FieldTextInput('"1"'), 'VALUE');
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour('#3498db');
+    this.setTooltip('Write a value to SQLite for the current player.');
+  }
+};
+
+// ── npc_sqlite_increment ──────────────────────────────────────────────────────
+Blockly.Blocks['npc_sqlite_increment'] = {
+  init() {
+    this.appendDummyInput()
+      .appendField('➕ SQLite INCREMENT table')
+      .appendField(new Blockly.FieldTextInput('visits'), 'TABLE')
+      .appendField('column')
+      .appendField(new Blockly.FieldTextInput('count'), 'COL')
+      .appendField('by')
+      .appendField(new Blockly.FieldNumber(1, 1), 'AMOUNT');
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour('#3498db');
+    this.setTooltip('Increment a numeric column for the current player.');
+  }
+};
+
+// ── npc_custom_hook ───────────────────────────────────────────────────────────
+Blockly.Blocks['npc_custom_hook'] = {
+  init() {
+    this.appendDummyInput()
+      .appendField('🔧 Custom hook name')
+      .appendField(new Blockly.FieldTextInput('myCustomHookFunc'), 'NAME');
+    this.appendDummyInput()
+      .appendField('Lua body (return int)')
+      .appendField(new Blockly.FieldTextInput('return 0'), 'BODY');
+    this.appendDummyInput()
+      .appendField('On success text')
+      .appendField(new Blockly.FieldTextInput('Done!'), 'SUCCESS');
+    this.appendDummyInput()
+      .appendField('On fail text')
+      .appendField(new Blockly.FieldTextInput('Something went wrong.'), 'FAIL');
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour('#e74c3c');
+    this.setTooltip('Write raw Lua code for a fully custom hook action.');
+  }
+};
+
+
+// ──────────────────────────────────────────────────────────────────────────────
+// LUA GENERATORS
+// ──────────────────────────────────────────────────────────────────────────────
+
+const luagen = Blockly.JavaScript; // reuse the namespace for our custom generator
+
+// State during generation
+let _state = {
+  nodeCounter: 0,
+  hooks: new Map(),      // funcName → body lines[]
+  nodes: [],             // { varName, text, ms, hook, reactions[], choices[] }
+  rootVar: 'entry',
+  dbTables: new Map(),   // table → { db, cols }
+  dbPathUsed: null,
+};
+
+function nextVar(prefix = 'entry') {
+  return `${prefix}${++_state.nodeCounter}`;
+}
+
+function resolvePlaceholders(text) {
+  return text
+    .replace(/\{name\}/g, '%s')
+    .replace(/\{partner\}/g, '%s')
+    .replace(/\{faction\}/g, '%s')
+    .replace(/\{owner\}/g, '%s')
+    .replace(/\{self\}/g, '%s');
+}
+
+function formatArgs(text) {
+  const args = [];
+  if (/\{name\}/.test(text))    args.push('dialogObject:getConverationParterName()');
+  if (/\{partner\}/.test(text)) args.push('dialogObject:getConverationPartnerAffinity()');
+  if (/\{faction\}/.test(text)) args.push('dialogObject:getConverationPartnerFactionName()');
+  if (/\{owner\}/.test(text))   args.push('dialogObject:getConverationPartnerOwnerName()');
+  if (/\{self\}/.test(text))    args.push('dialogObject:getOwnName()');
+  return args;
+}
+
+function textExpr(text) {
+  const resolved = resolvePlaceholders(text).replace(/"/g, '\\"').replace(/\n/g, '\\n');
+  const args = formatArgs(text);
+  if (args.length === 0) return `dialogObject:format("${resolved}")`;
+  return `dialogObject:format("${resolved}", ${args.join(', ')})`;
+}
+
+function makeNode(text, ms = 2000) {
+  const vn = nextVar();
+  _state.nodes.push({ varName: vn, text, ms, hook: null, reactions: [], choices: [] });
+  return vn;
+}
+
+function getNode(vn) {
+  return _state.nodes.find(n => n.varName === vn);
+}
+
+function registerHook(funcName, bodyLines) {
+  if (!_state.hooks.has(funcName)) {
+    _state.hooks.set(funcName, bodyLines);
+  }
+}
+
+function makeSellAction(item, price, parentVarName) {
+  const hookFn = `give_${item}_${price}_Hook`;
+  const methodMap = {
+    laser: 'giveLaserWeapon', sniper: 'giveSniperRifle',
+    rocket: 'giveRocketLauncher', helmet: 'giveHelmet',
+    healing: 'giveHealingBeam', power: 'givePowerSupplyBeam',
+    marker: 'giveMarkerBeam', transporter: 'giveTransporterMarkerBeam',
+    grapple: 'giveGrappleBeam', torch: 'giveTorchBeam',
+    prohibiter: 'giveBuildProhibiter', flashlight: 'giveFlashLight',
+  };
+  registerHook(hookFn, [`return dialogObject:${methodMap[item]}(${price});`]);
+
+  const waitVn   = makeNode('Please wait...');
+  const successVn = makeNode('Thank you!');
+  const failVn   = makeNode("You don't have enough money!");
+  const fail2Vn  = makeNode("Sorry, your inventory is full!");
+
+  const waitNode = getNode(waitVn);
+  waitNode.hook = hookFn;
+  waitNode.reactions = [
+    { code: 0,  target: successVn },
+    { code: -1, target: failVn },
+    { code: -2, target: fail2Vn },
+  ];
+  return waitVn;
+}
+
+function makeHireAction(price, successText) {
+  const hookFn = `hireHookFunc_${price}`;
+  registerHook(hookFn, [`return dialogObject:hireConverationPartner();`]);
+  const waitVn    = makeNode('Please wait...');
+  const successVn = makeNode(successText || "I'm honoured!");
+  const fail1Vn   = makeNode("You don't have enough money!");
+  const fail2Vn   = makeNode("You can't have more crew!");
+  const fail3Vn   = makeNode("I won't follow you.");
+  const waitNode  = getNode(waitVn);
+  waitNode.hook = hookFn;
+  waitNode.reactions = [
+    { code: 0,  target: successVn },
+    { code: -1, target: fail1Vn },
+    { code: -2, target: fail2Vn },
+    { code: -3, target: fail3Vn },
+  ];
+  return waitVn;
+}
+
+function makeUnhireAction(successText) {
+  const hookFn = 'unhireHookFunc';
+  registerHook(hookFn, [`return dialogObject:unhireConverationPartner();`]);
+  const waitVn    = makeNode('Please wait...');
+  const successVn = makeNode(successText || 'Yes, commander!');
+  const failVn    = makeNode('No, commander!');
+  const waitNode  = getNode(waitVn);
+  waitNode.hook = hookFn;
+  waitNode.reactions = [
+    { code: 0,  target: successVn },
+    { code: -1, target: failVn },
+  ];
+  return waitVn;
+}
+
+// Process a statement input recursively and return array of {label, targetVarName}
+function processChoices(block, inputName, parentVarName) {
+  const choices = [];
+  let child = block.getInputTargetBlock(inputName);
+  while (child) {
+    if (child.type === 'npc_choice') {
+      const label  = child.getFieldValue('LABEL');
+      const action = processActions(child, 'ACTIONS', parentVarName);
+      choices.push({ label, targetVarName: action || makeNode(label) });
+    } else if (child.type === 'npc_goback') {
+      const label = child.getFieldValue('LABEL');
+      choices.push({ label, targetVarName: '__BACK__' + parentVarName });
+    }
+    child = child.getNextBlock();
+  }
+  return choices;
+}
+
+// Process actions inside a choice block — return the primary action node var name
+function processActions(block, inputName, parentVarName) {
+  let child = block.getInputTargetBlock(inputName);
+  if (!child) return null;
+  return processActionBlock(child, parentVarName);
+}
+
+function processActionBlock(block, parentVarName) {
+  if (!block) return null;
+  switch (block.type) {
+    case 'npc_hire': {
+      const price   = block.getFieldValue('PRICE');
+      const success = block.getFieldValue('SUCCESS');
+      return makeHireAction(price, success);
+    }
+    case 'npc_unhire': {
+      const success = block.getFieldValue('SUCCESS');
+      return makeUnhireAction(success);
+    }
+    case 'npc_spawn_crew': {
+      const price  = block.getFieldValue('PRICE');
+      const hookFn = `spawnCrewHook_${price}`;
+      registerHook(hookFn, [`return dialogObject:spawnCrew(${price});`]);
+      const waitVn = makeNode('Please wait...');
+      const successVn = makeNode('Welcome!');
+      const failVn = makeNode("You don't have enough money!");
+      const fail2Vn = makeNode("You can't have more crew!");
+      const waitNode = getNode(waitVn);
+      waitNode.hook = hookFn;
+      waitNode.reactions = [{ code: 0, target: successVn }, { code: -1, target: failVn }, { code: -2, target: fail2Vn }];
+      return waitVn;
+    }
+    case 'npc_sell_item': {
+      const item  = block.getFieldValue('ITEM');
+      const price = block.getFieldValue('PRICE');
+      return makeSellAction(item, price, parentVarName);
+    }
+    case 'npc_give_type': {
+      const typeId = block.getFieldValue('TYPE_ID');
+      const count  = block.getFieldValue('COUNT');
+      const hookFn = `giveTypeHook_${typeId}_${count}`;
+      registerHook(hookFn, [`return dialogObject:giveType(${typeId}, ${count});`]);
+      const waitVn = makeNode('Please wait...');
+      const successVn = makeNode('Here you go!');
+      const failVn = makeNode("You don't have enough money!");
+      const fail2Vn = makeNode("Your inventory is full!");
+      const waitNode = getNode(waitVn);
+      waitNode.hook = hookFn;
+      waitNode.reactions = [{ code: 0, target: successVn }, { code: -1, target: failVn }, { code: -2, target: fail2Vn }];
+      return waitVn;
+    }
+    case 'npc_activate_block': {
+      const x = block.getFieldValue('X');
+      const y = block.getFieldValue('Y');
+      const z = block.getFieldValue('Z');
+      const st = block.getFieldValue('STATE');
+      const hookFn = `activateBlockHook_${x}_${y}_${z}`;
+      if (st === 'toggle') {
+        registerHook(hookFn, [`return dialogObject:activateBlockSwitch(${x}, ${y}, ${z});`]);
+      } else {
+        registerHook(hookFn, [`return dialogObject:activateBlock(${x}, ${y}, ${z}, ${st});`]);
+      }
+      const waitVn = makeNode('Please wait...');
+      const successVn = makeNode('Done!');
+      const waitNode = getNode(waitVn);
+      waitNode.hook = hookFn;
+      waitNode.reactions = [{ code: 0, target: successVn }];
+      return waitVn;
+    }
+    case 'npc_move_to': {
+      const x = block.getFieldValue('X');
+      const y = block.getFieldValue('Y');
+      const z = block.getFieldValue('Z');
+      const hookFn = `moveToHook_${x}_${y}_${z}`;
+      registerHook(hookFn, [`return dialogObject:moveTo(${x}, ${y}, ${z});`]);
+      const waitVn = makeNode('Moving...');
+      const waitNode = getNode(waitVn);
+      waitNode.hook = hookFn;
+      return waitVn;
+    }
+    case 'npc_sqlite_get': {
+      const table = block.getFieldValue('TABLE');
+      const col   = block.getFieldValue('COL');
+      const def   = block.getFieldValue('DEFAULT');
+      const varN  = block.getFieldValue('VAR');
+      const hookFn = `sqliteGetHook_${table}_${col}`;
+      registerHook(hookFn, [
+        `local player = dialogObject:getOwnName()`,
+        `local ${varN} = (_dbGet("SELECT ${col} FROM ${table} WHERE player = ?", player) or ${def})`,
+        `return 0`,
+      ]);
+      const waitVn = makeNode('...');
+      const successVn = makeNode(`Read: ${varN}`);
+      const waitNode = getNode(waitVn);
+      waitNode.hook = hookFn;
+      waitNode.reactions = [{ code: 0, target: successVn }];
+      return waitVn;
+    }
+    case 'npc_sqlite_set': {
+      const table = block.getFieldValue('TABLE');
+      const col   = block.getFieldValue('COL');
+      const value = block.getFieldValue('VALUE');
+      const hookFn = `sqliteSetHook_${table}_${col}`;
+      registerHook(hookFn, [
+        `local player = dialogObject:getOwnName()`,
+        `_dbUpsert("${table}", "player", player, "${col}", ${value})`,
+        `return 0`,
+      ]);
+      const waitVn = makeNode('Saving...');
+      const successVn = makeNode('Saved!');
+      const waitNode = getNode(waitVn);
+      waitNode.hook = hookFn;
+      waitNode.reactions = [{ code: 0, target: successVn }];
+      return waitVn;
+    }
+    case 'npc_sqlite_increment': {
+      const table  = block.getFieldValue('TABLE');
+      const col    = block.getFieldValue('COL');
+      const amount = block.getFieldValue('AMOUNT');
+      const hookFn = `sqliteIncrHook_${table}_${col}`;
+      registerHook(hookFn, [
+        `local player = dialogObject:getOwnName()`,
+        `_dbIncrement("${table}", "player", player, "${col}", ${amount})`,
+        `return 0`,
+      ]);
+      const waitVn = makeNode('...');
+      const successVn = makeNode('Done!');
+      const waitNode = getNode(waitVn);
+      waitNode.hook = hookFn;
+      waitNode.reactions = [{ code: 0, target: successVn }];
+      return waitVn;
+    }
+    case 'npc_custom_hook': {
+      const name    = block.getFieldValue('NAME');
+      const body    = block.getFieldValue('BODY');
+      const success = block.getFieldValue('SUCCESS');
+      const fail    = block.getFieldValue('FAIL');
+      registerHook(name, [body]);
+      const waitVn = makeNode('Please wait...');
+      const successVn = makeNode(success);
+      const failVn = makeNode(fail);
+      const waitNode = getNode(waitVn);
+      waitNode.hook = name;
+      waitNode.reactions = [{ code: 0, target: successVn }, { code: -1, target: failVn }];
+      return waitVn;
+    }
+    case 'npc_greeting': {
+      return processGreeting(block);
+    }
+    default:
+      return null;
+  }
+}
+
+function processGreeting(block) {
+  const text = block.getFieldValue('TEXT');
+  const ms   = parseInt(block.getFieldValue('MS')) || 2000;
+  const vn   = block.type === 'npc_greeting' ? 'entry' : nextVar();
+  if (vn === 'entry') _state.rootVar = 'entry';
+  _state.nodes.push({ varName: vn, text, ms, hook: null, reactions: [], choices: [] });
+  const choices = processChoices(block, 'CHOICES', vn);
+  const node = _state.nodes.find(n => n.varName === vn);
+  for (const c of choices) {
+    if (c.targetVarName && c.targetVarName.startsWith('__BACK__')) {
+      // "Go back" — link back to the parent greeting node
+      node.choices.push({ label: c.label, targetVarName: vn });
+    } else {
+      node.choices.push({ label: c.label, targetVarName: c.targetVarName });
+    }
+  }
+  return vn;
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// LUA EMISSION
+// ──────────────────────────────────────────────────────────────────────────────
+
+function generateLua(scriptName) {
+  _state = {
+    nodeCounter: 0,
+    hooks: new Map(),
+    nodes: [],
+    rootVar: 'entry',
+    dbTables: new Map(),
+    dbPath: null,
+  };
+
+  // Find root block
+  const allBlocks = workspace.getAllBlocks(false);
+
+  // Collect SQLite tables
+  for (const b of allBlocks) {
+    if (b.type === 'npc_sqlite_table') {
+      const tbl = b.getFieldValue('TABLE');
+      const db  = b.getFieldValue('DB');
+      const cols = b.getFieldValue('COLS');
+      _state.dbTables.set(tbl, { db, cols });
+      _state.dbPath = _state.dbPath || db;
+    }
+  }
+
+  // Find greeting blocks
+  const greetings = allBlocks.filter(b => b.type === 'npc_greeting');
+  if (greetings.length === 0) {
+    return '-- ERROR: Add a "💬 Greeting" block to start your dialog.';
+  }
+  processGreeting(greetings[0]);
+
+  const lines = [];
+  lines.push(`--[[`);
+  lines.push(`  NPC Dialog Script: ${scriptName}`);
+  lines.push(`  Generated by StarMade NPC Creator`);
+  lines.push(`--]]`);
+  lines.push(``);
+
+  // SQLite init
+  if (_state.dbTables.size > 0 && _state.dbPath) {
+    lines.push(`-- SQLite persistent state`);
+    lines.push(`local _DriverManager = luajava.bindClass("java.sql.DriverManager")`);
+    lines.push(`pcall(function() luajava.bindClass("org.sqlite.JDBC") end)`);
+    lines.push(`local _npcDb = _DriverManager:getConnection("jdbc:sqlite:${_state.dbPath}")`);
+    lines.push(``);
+    for (const [tbl, { cols }] of _state.dbTables) {
+      lines.push(`do local s = _npcDb:createStatement()`);
+      lines.push(`  s:execute("CREATE TABLE IF NOT EXISTS ${tbl} (${cols})")`);
+      lines.push(`  s:close() end`);
+    }
+    lines.push(``);
+    lines.push(`local function _dbGet(sql, ...)`);
+    lines.push(`  local ps = _npcDb:prepareStatement(sql)`);
+    lines.push(`  local a = {...}; for i,v in ipairs(a) do ps:setObject(i,v) end`);
+    lines.push(`  local rs = ps:executeQuery(); local r = nil`);
+    lines.push(`  if rs:next() then r = rs:getObject(1) end`);
+    lines.push(`  rs:close(); ps:close(); return r`);
+    lines.push(`end`);
+    lines.push(`local function _dbExec(sql, ...)`);
+    lines.push(`  local ps = _npcDb:prepareStatement(sql)`);
+    lines.push(`  local a = {...}; for i,v in ipairs(a) do ps:setObject(i,v) end`);
+    lines.push(`  ps:executeUpdate(); ps:close()`);
+    lines.push(`end`);
+    lines.push(`local function _dbUpsert(t, kc, kv, col, val)`);
+    lines.push(`  if _dbGet("SELECT "..col.." FROM "..t.." WHERE "..kc.."=?",kv)==nil then`);
+    lines.push(`    _dbExec("INSERT INTO "..t.."("..kc..","..col..")VALUES(?,?)",kv,val)`);
+    lines.push(`  else _dbExec("UPDATE "..t.." SET "..col.."=? WHERE "..kc.."=?",val,kv) end`);
+    lines.push(`end`);
+    lines.push(`local function _dbIncrement(t,kc,kv,col,n)`);
+    lines.push(`  n=n or 1`);
+    lines.push(`  local cur=_dbGet("SELECT "..col.." FROM "..t.." WHERE "..kc.."=?",kv)`);
+    lines.push(`  if cur==nil then _dbExec("INSERT INTO "..t.."("..kc..","..col..")VALUES(?,?)",kv,n)`);
+    lines.push(`  else _dbExec("UPDATE "..t.." SET "..col.."="..col.."+? WHERE "..kc.."=?",n,kv) end`);
+    lines.push(`end`);
+    lines.push(``);
+  }
+
+  // Hook functions
+  if (_state.hooks.size > 0) {
+    lines.push(`-- Hook functions`);
+    for (const [fn, body] of _state.hooks) {
+      lines.push(`function ${fn}(dialogObject)`);
+      for (const l of body) lines.push(`  ${l}`);
+      lines.push(`end`);
+      lines.push(``);
+    }
+  }
+
+  // create()
+  lines.push(`function create(dialogObject, bindings)`);
+  lines.push(``);
+  lines.push(`  local dSys = luajava.newInstance("org.schema.game.common.data.player.dialog.DialogSystem", dialogObject)`);
+  lines.push(`  local factory = dSys:getFactory(bindings)`);
+  lines.push(`  local TextEntry = "org.schema.game.common.data.player.dialog.TextEntry"`);
+  lines.push(`  local HookLua = "org.schema.game.common.data.player.dialog.DialogTextEntryHookLua"`);
+  lines.push(``);
+
+  // Hook instances
+  const usedHooks = new Set(_state.nodes.filter(n => n.hook).map(n => n.hook));
+  if (usedHooks.size > 0) {
+    lines.push(`  -- Hook instances`);
+    for (const fn of usedHooks) {
+      lines.push(`  local hook_${fn} = luajava.newInstance(HookLua, "${fn}", {})`);
+    }
+    lines.push(``);
+  }
+
+  // Node declarations
+  lines.push(`  -- Dialog nodes`);
+  for (const node of _state.nodes) {
+    const te = textExpr(node.text);
+    lines.push(`  local ${node.varName} = luajava.newInstance(TextEntry, ${te}, ${node.ms})`);
+  }
+  lines.push(``);
+
+  // Root entry
+  lines.push(`  factory:setRootEntry(${_state.rootVar})`);
+  lines.push(``);
+
+  // Attach hooks
+  const nodesWithHooks = _state.nodes.filter(n => n.hook);
+  if (nodesWithHooks.length > 0) {
+    lines.push(`  -- Attach hooks`);
+    for (const n of nodesWithHooks) {
+      lines.push(`  ${n.varName}:setHook(hook_${n.hook})`);
+    }
+    lines.push(``);
+  }
+
+  // Reactions
+  const nodesWithReactions = _state.nodes.filter(n => n.reactions.length > 0);
+  if (nodesWithReactions.length > 0) {
+    lines.push(`  -- Hook reactions`);
+    for (const n of nodesWithReactions) {
+      for (const r of n.reactions) {
+        lines.push(`  ${n.varName}:addReaction(hook_${n.hook}, ${r.code}, ${r.target})`);
+      }
+    }
+    lines.push(``);
+  }
+
+  // Choices
+  const nodesWithChoices = _state.nodes.filter(n => n.choices.length > 0);
+  if (nodesWithChoices.length > 0) {
+    lines.push(`  -- Player choices`);
+    for (const n of nodesWithChoices) {
+      for (const c of n.choices) {
+        const tgt = c.targetVarName || n.varName;
+        lines.push(`  ${n.varName}:add(${tgt}, ${textExpr(c.label)})`);
+      }
+    }
+    lines.push(``);
+  }
+
+  lines.push(`  dSys:add(factory)`);
+  lines.push(`  return dSys`);
+  lines.push(``);
+  lines.push(`end`);
+
+  return lines.join('\n');
+}
+
+
+// ──────────────────────────────────────────────────────────────────────────────
+// SYNTAX HIGHLIGHT (minimal, no deps)
+// ──────────────────────────────────────────────────────────────────────────────
+function highlight(code) {
+  return code
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/(--.*$)/gm, '<span class="cmt">$1</span>')
+    .replace(/\b(function|local|return|if|then|else|elseif|end|and|or|not|for|in|do|while|repeat|until)\b/g, '<span class="kw">$1</span>')
+    .replace(/"([^"\\]|\\.)*"/g, '<span class="str">$&</span>')
+    .replace(/\[\[[\s\S]*?\]\]/g, '<span class="str">$&</span>')
+    .replace(/\b(\d+)\b/g, '<span class="num">$1</span>');
+}
+
+
+// ──────────────────────────────────────────────────────────────────────────────
+// UI ACTIONS
+// ──────────────────────────────────────────────────────────────────────────────
+function generateAndShow() {
+  const name = document.getElementById('scriptName').value || 'my-npc';
+  try {
+    const lua = generateLua(name);
+    document.getElementById('luaOutput').innerHTML = highlight(lua);
+    showTab('lua');
+    const nodeCount = _state.nodes.length;
+    const hookCount = _state.hooks.size;
+    document.getElementById('statusBar').textContent =
+      `✓ Generated — ${nodeCount} nodes, ${hookCount} hooks, ${lua.split('\n').length} lines`;
+  } catch (e) {
+    document.getElementById('luaOutput').textContent = '-- ERROR: ' + e.message;
+    document.getElementById('statusBar').textContent = '✗ Error: ' + e.message;
+  }
+}
+
+function downloadLua() {
+  const name = document.getElementById('scriptName').value || 'my-npc';
+  const lua  = generateLua(name);
+  const blob = new Blob([lua], { type: 'text/plain' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = name + '.lua'; a.click();
+  URL.revokeObjectURL(url);
+}
+
+function clearWorkspace() {
+  if (confirm('Clear all blocks?')) workspace.clear();
+  document.getElementById('luaOutput').textContent = '-- Workspace cleared.';
+  document.getElementById('statusBar').textContent = 'Workspace cleared.';
+}
+
+function showTab(id) {
+  document.querySelectorAll('.tab').forEach((t, i) => {
+    t.classList.toggle('active', ['lua','help'][i] === id);
+  });
+  document.querySelectorAll('.tab-content').forEach(c => {
+    c.classList.toggle('active', c.id === 'tab-' + id);
+  });
+}
+
+
+// ──────────────────────────────────────────────────────────────────────────────
+// EXAMPLE
+// ──────────────────────────────────────────────────────────────────────────────
+function loadExample() {
+  workspace.clear();
+  const xml = `
+<xml xmlns="https://developers.google.com/blockly/xml">
+  <block type="npc_greeting" x="20" y="20">
+    <field name="TEXT">Greetings {name}! I'm {partner} of {faction}.</field>
+    <field name="MS">2000</field>
+    <statement name="CHOICES">
+      <block type="npc_choice">
+        <field name="LABEL">I want to join your team.</field>
+        <statement name="ACTIONS">
+          <block type="npc_hire">
+            <field name="PRICE">50000</field>
+            <field name="SUCCESS">I'm honoured to work with you, commander!</field>
+          </block>
+        </statement>
+        <next>
+          <block type="npc_choice">
+            <field name="LABEL">Buy a Laser Pistol (100 000 credits)</field>
+            <statement name="ACTIONS">
+              <block type="npc_sell_item">
+                <field name="ITEM">laser</field>
+                <field name="PRICE">100000</field>
+              </block>
+            </statement>
+            <next>
+              <block type="npc_choice">
+                <field name="LABEL">Buy a Helmet (50 000 credits)</field>
+                <statement name="ACTIONS">
+                  <block type="npc_sell_item">
+                    <field name="ITEM">helmet</field>
+                    <field name="PRICE">50000</field>
+                  </block>
+                </statement>
+                <next>
+                  <block type="npc_goback">
+                    <field name="LABEL">Goodbye.</field>
+                  </block>
+                </next>
+              </block>
+            </next>
+          </block>
+        </next>
+      </block>
+    </statement>
+  </block>
+</xml>`;
+  Blockly.Xml.domToWorkspace(Blockly.Xml.textToDom(xml), workspace);
+  generateAndShow();
+}
+
+
+// ──────────────────────────────────────────────────────────────────────────────
+// INIT BLOCKLY
+// ──────────────────────────────────────────────────────────────────────────────
+const workspace = Blockly.inject('blocklyDiv', {
+  toolbox: document.getElementById('toolbox'),
+  grid:    { spacing: 20, length: 3, colour: '#1a2540', snap: true },
+  zoom:    { controls: true, wheel: true, startScale: 0.9, maxScale: 3, minScale: 0.3, scaleSpeed: 1.2 },
+  theme: Blockly.Theme.defineTheme('starmade', {
+    'base': Blockly.Themes.Classic,
+    'componentStyles': {
+      'workspaceBackgroundColour': '#0d1117',
+      'toolboxBackgroundColour': '#161b22',
+      'toolboxForegroundColour': '#c9d1d9',
+      'flyoutBackgroundColour': '#21262d',
+      'flyoutForegroundColour': '#c9d1d9',
+      'flyoutOpacity': 0.95,
+      'scrollbarColour': '#0f3460',
+    }
+  }),
+  trashcan: true,
+  scrollbars: true,
+});
+
+// Auto-generate on change
+workspace.addChangeListener(() => {
+  if (workspace.getAllBlocks(false).some(b => b.type === 'npc_greeting')) {
+    generateAndShow();
+  }
+});
+
+// Load example on startup
+window.addEventListener('load', () => {
+  setTimeout(loadExample, 300);
+});
+</script>
+</body>
+</html>
