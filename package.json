@@ -1,0 +1,50 @@
+{
+  "name": "starmade-npccreator",
+  "version": "1.0.0",
+  "description": "TypeScript fluent API to generate StarMade NPC Lua dialog scripts — supports SQLite state, advanced branching, and full dialogObject coverage",
+  "type": "module",
+  "license": "MIT",
+  "author": "InitSysRev <init-sys-rev@hotmail.com>",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "docs",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "node --import tsx/esm --no-warnings node_modules/.bin/mocha 'test/**/*.test.ts'",
+    "clean": "rimraf dist",
+    "prepublishOnly": "npm run build && npm test"
+  },
+  "devDependencies": {
+    "@types/chai": "^4.3.20",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^20.19.40",
+    "chai": "^5.3.3",
+    "mocha": "^10.8.2",
+    "rimraf": "^5.0.10",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "starmade",
+    "npc",
+    "lua",
+    "dialog",
+    "script",
+    "generator"
+  ]
+}
