@@ -6,7 +6,7 @@
   <title>StarMade NPC Creator — Visual Editor</title>
 
   <!-- Blockly from CDN -->
-  <script src="https://unpkg.com/blockly/blockly.min.js"></script>
+  <script src="https://unpkg.com/blockly@10.4.3/blockly.min.js"></script>
 
   <style>
     /* ── Reset & base ───────────────────────────────────────────────────────── */
@@ -1102,9 +1102,95 @@ function showTab(id) {
 // ──────────────────────────────────────────────────────────────────────────────
 function loadExample() {
   workspace.clear();
-  const xml = `
-<xml xmlns="https://developers.google.com/blockly/xml">
-  <block type="npc_greeting" x="20" y="20">
+
+  // Use Blockly serialization API (v10+) — avoids deprecated Blockly.Xml
+  const state = {
+    "blocks": {
+      "languageVersion": 0,
+      "blocks": [
+        {
+          "type": "npc_greeting",
+          "x": 30, "y": 30,
+          "fields": {
+            "TEXT": "Greetings {name}! I'm {partner} of {faction}.",
+            "MS": 2000
+          },
+          "inputs": {
+            "CHOICES": {
+              "block": {
+                "type": "npc_choice",
+                "fields": { "LABEL": "I want to join your team." },
+                "inputs": {
+                  "ACTIONS": {
+                    "block": {
+                      "type": "npc_hire",
+                      "fields": { "PRICE": 50000, "SUCCESS": "I'm honoured to work with you, commander!" }
+                    }
+                  }
+                },
+                "next": {
+                  "block": {
+                    "type": "npc_choice",
+                    "fields": { "LABEL": "Buy a Laser Pistol (100 000 credits)" },
+                    "inputs": {
+                      "ACTIONS": {
+                        "block": {
+                          "type": "npc_sell_item",
+                          "fields": { "ITEM": "laser", "PRICE": 100000 }
+                        }
+                      }
+                    },
+                    "next": {
+                      "block": {
+                        "type": "npc_choice",
+                        "fields": { "LABEL": "Buy a Helmet (50 000 credits)" },
+                        "inputs": {
+                          "ACTIONS": {
+                            "block": {
+                              "type": "npc_sell_item",
+                              "fields": { "ITEM": "helmet", "PRICE": 50000 }
+                            }
+                          }
+                        },
+                        "next": {
+                          "block": {
+                            "type": "npc_choice",
+                            "fields": { "LABEL": "Activate gate at 10,0,5" },
+                            "inputs": {
+                              "ACTIONS": {
+                                "block": {
+                                  "type": "npc_activate_block",
+                                  "fields": { "X": 10, "Y": 0, "Z": 5, "STATE": "toggle" }
+                                }
+                              }
+                            },
+                            "next": {
+                              "block": {
+                                "type": "npc_goback",
+                                "fields": { "LABEL": "Goodbye." }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  };
+
+  try {
+    Blockly.serialization.workspaces.load(state, workspace);
+  } catch (e) {
+    // Fallback for older Blockly builds
+    try {
+      const xml = `<xml xmlns="https://developers.google.com/blockly/xml">
+  <block type="npc_greeting" x="30" y="30">
     <field name="TEXT">Greetings {name}! I'm {partner} of {faction}.</field>
     <field name="MS">2000</field>
     <statement name="CHOICES">
@@ -1126,19 +1212,8 @@ function loadExample() {
               </block>
             </statement>
             <next>
-              <block type="npc_choice">
-                <field name="LABEL">Buy a Helmet (50 000 credits)</field>
-                <statement name="ACTIONS">
-                  <block type="npc_sell_item">
-                    <field name="ITEM">helmet</field>
-                    <field name="PRICE">50000</field>
-                  </block>
-                </statement>
-                <next>
-                  <block type="npc_goback">
-                    <field name="LABEL">Goodbye.</field>
-                  </block>
-                </next>
+              <block type="npc_goback">
+                <field name="LABEL">Goodbye.</field>
               </block>
             </next>
           </block>
@@ -1147,7 +1222,15 @@ function loadExample() {
     </statement>
   </block>
 </xml>`;
-  Blockly.Xml.domToWorkspace(Blockly.Xml.textToDom(xml), workspace);
+      const dom = Blockly.Xml.textToDom(xml);
+      Blockly.Xml.domToWorkspace(dom, workspace);
+    } catch (e2) {
+      document.getElementById('statusBar').textContent = 'Could not load example: ' + e2.message;
+    }
+  }
+
+  // Center and generate
+  workspace.scrollCenter();
   generateAndShow();
 }
 
@@ -1182,9 +1265,16 @@ workspace.addChangeListener(() => {
   }
 });
 
-// Load example on startup
+// Load example on startup — wait for Blockly to fully initialize
 window.addEventListener('load', () => {
-  setTimeout(loadExample, 300);
+  // Give Blockly time to register all custom blocks before loading state
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    try {
+      loadExample();
+    } catch (e) {
+      setTimeout(loadExample, 500);
+    }
+  }));
 });
 </script>
 </body>
