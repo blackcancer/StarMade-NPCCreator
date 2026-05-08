@@ -296,12 +296,17 @@
     <block type="npc_sqlite_set"></block>
     <block type="npc_sqlite_increment"></block>
   </category>
+  <category name="✅ Conditions" colour="#16a085">
+    <block type="npc_check_credits"></block>
+    <block type="npc_check_player_value"></block>
+    <block type="npc_check_flag"></block>
+    <block type="npc_is_at_block"></block>
+    <block type="npc_check_custom_condition"></block>
+  </category>
   <category name="🔧 Advanced" colour="#e74c3c">
     <block type="npc_custom_hook"></block>
     <block type="npc_give_meta_item"></block>
-    <block type="npc_check_credits"></block>
     <block type="npc_get_info"></block>
-    <block type="npc_is_at_block"></block>
   </category>
 </xml>
 
@@ -786,12 +791,115 @@ Blockly.Blocks['npc_check_credits'] = {
       .appendField(new Blockly.FieldTextInput("You don't have enough credits."), 'FAIL');
     this.setPreviousStatement(true, null);
     this.setNextStatement(true, null);
-    this.setColour('#e74c3c');
+    this.setColour('#16a085');
     this.setTooltip(
       'CHECK CREDITS\nCheck if the player has at least N credits.\n\n' +
       'Uses: PlayerState.getCredits()\n\n' +
       'Return codes from hook:\n  0  player has >= amount\n  -1 player has < amount\n\n' +
       'Does NOT deduct credits — use sell blocks to charge.'
+    );
+  }
+};
+
+// ── npc_check_player_value ───────────────────────────────────────────────────
+Blockly.Blocks['npc_check_player_value'] = {
+  init() {
+    this.appendDummyInput()
+      .appendField('🧪 Check player')
+      .appendField(new Blockly.FieldDropdown([
+        ['Credits', 'credits'],
+        ['Health', 'health'],
+        ['Max Health', 'maxHealth'],
+        ['Faction ID', 'factionId'],
+        ['Sector ID', 'sectorId'],
+      ]), 'VALUE_TYPE')
+      .appendField(new Blockly.FieldDropdown([
+        ['≥', '>='],
+        ['>',  '>'],
+        ['=',  '=='],
+        ['≠',  '~='],
+        ['≤',  '<='],
+        ['<',  '<'],
+      ]), 'OP')
+      .appendField(new Blockly.FieldNumber(0), 'VALUE');
+    this.appendDummyInput()
+      .appendField('If true →')
+      .appendField(new Blockly.FieldTextInput('Condition met.'), 'SUCCESS');
+    this.appendDummyInput()
+      .appendField('If false →')
+      .appendField(new Blockly.FieldTextInput('Condition failed.'), 'FAIL');
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour('#16a085');
+    this.setTooltip(
+      'CHECK PLAYER VALUE\nCompare a live player value with a number.\n\n' +
+      'Available values:\n' +
+      '  Credits      → PlayerState.getCredits()\n' +
+      '  Health       → PlayerState.getHealth()\n' +
+      '  Max Health   → PlayerState.getMaxHealth()\n' +
+      '  Faction ID   → PlayerState.getFactionId()\n' +
+      '  Sector ID    → PlayerState.getCurrentSectorId()\n\n' +
+      'Return 0 when the comparison is true, -1 otherwise.'
+    );
+  }
+};
+
+// ── npc_check_flag ───────────────────────────────────────────────────────────
+Blockly.Blocks['npc_check_flag'] = {
+  init() {
+    this.appendDummyInput()
+      .appendField('🚦 Check flag')
+      .appendField(new Blockly.FieldDropdown([
+        ['Player creative mode', 'creative'],
+        ['NPC already in team', 'inTeam'],
+      ]), 'FLAG')
+      .appendField(new Blockly.FieldDropdown([
+        ['is ON / true', 'true'],
+        ['is OFF / false', 'false'],
+      ]), 'EXPECT');
+    this.appendDummyInput()
+      .appendField('If true →')
+      .appendField(new Blockly.FieldTextInput('Yes.'), 'SUCCESS');
+    this.appendDummyInput()
+      .appendField('If false →')
+      .appendField(new Blockly.FieldTextInput('No.'), 'FAIL');
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour('#16a085');
+    this.setTooltip(
+      'CHECK FLAG\nEvaluate a boolean condition.\n\n' +
+      'Flags:\n' +
+      '  Player creative mode  → PlayerState.isCreativeModeEnabled()\n' +
+      '  NPC already in team   → dialogObject:isConverationPartnerInTeam()\n\n' +
+      'Use this before hire/unhire flows or admin-only dialog paths.'
+    );
+  }
+};
+
+// ── npc_check_custom_condition ───────────────────────────────────────────────
+Blockly.Blocks['npc_check_custom_condition'] = {
+  init() {
+    this.appendDummyInput()
+      .appendField('🧩 Custom condition')
+      .appendField(new Blockly.FieldTextInput('dialogObject:getEntity():getCredits() >= 50000'), 'EXPR');
+    this.appendDummyInput()
+      .appendField('If true →')
+      .appendField(new Blockly.FieldTextInput('Condition met.'), 'SUCCESS');
+    this.appendDummyInput()
+      .appendField('If false →')
+      .appendField(new Blockly.FieldTextInput('Condition failed.'), 'FAIL');
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour('#16a085');
+    this.setTooltip(
+      'CUSTOM CONDITION\nWrite any Lua boolean expression.\n\n' +
+      'Examples:\n' +
+      '  dialogObject:isConverationPartnerInTeam()\n' +
+      '  dialogObject:getEntity():getFactionId() == 10001\n' +
+      '  dialogObject:getEntity():getHealth() <= 25\n\n' +
+      'The expression is wrapped as:\n' +
+      '  if (<expr>) then return 0 end\n' +
+      '  return -1'
     );
   }
 };
@@ -849,7 +957,7 @@ Blockly.Blocks['npc_is_at_block'] = {
       .appendField(new Blockly.FieldTextInput('You need to go to the marker.'), 'FAIL');
     this.setPreviousStatement(true, null);
     this.setNextStatement(true, null);
-    this.setColour('#e74c3c');
+    this.setColour('#16a085');
     this.setTooltip(
       'CHECK PLAYER POSITION\nVerify the player is at specific block coordinates.\n\n' +
       'Returns true when player is at (X, Y, Z) — then shows success text.\n' +
@@ -958,6 +1066,27 @@ function registerHook(funcName, bodyLines) {
   if (!_state.hooks.has(funcName)) {
     _state.hooks.set(funcName, bodyLines);
   }
+}
+
+function hashCode(s) {
+  s = String(s || '');
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0;
+  return h;
+}
+
+function makeBinaryConditionAction(hookFn, bodyLines, waitText, successText, failText) {
+  registerHook(hookFn, bodyLines);
+  const waitVn    = makeNode(waitText || 'Checking...');
+  const successVn = makeNode(successText || 'Condition met.');
+  const failVn    = makeNode(failText || 'Condition failed.');
+  const waitNode  = getNode(waitVn);
+  waitNode.hook = hookFn;
+  waitNode.reactions = [
+    { code: 0,  target: successVn },
+    { code: -1, target: failVn },
+  ];
+  return waitVn;
 }
 
 function makeSellAction(item, price, parentVarName) {
@@ -1190,20 +1319,72 @@ function processActionBlock(block, parentVarName) {
       const success = block.getFieldValue('SUCCESS');
       const fail    = block.getFieldValue('FAIL');
       const hookFn  = `checkCreditsHook_${amount}`;
-      registerHook(hookFn, [
+      return makeBinaryConditionAction(hookFn, [
         `local ps = dialogObject:getEntity()`,
         `if ps == nil then return -1 end`,
         `local credits = ps:getCredits()`,
         `if credits >= ${amount} then return 0 end`,
         `return -1`,
-      ]);
-      const waitVn = makeNode('Checking...');
-      const successVn = makeNode(success);
-      const failVn  = makeNode(fail);
-      const waitNode = getNode(waitVn);
-      waitNode.hook = hookFn;
-      waitNode.reactions = [{ code: 0, target: successVn }, { code: -1, target: failVn }];
-      return waitVn;
+      ], 'Checking credits...', success, fail);
+    }
+    case 'npc_check_player_value': {
+      const valueType = block.getFieldValue('VALUE_TYPE');
+      const op        = block.getFieldValue('OP');
+      const value     = block.getFieldValue('VALUE');
+      const success   = block.getFieldValue('SUCCESS');
+      const fail      = block.getFieldValue('FAIL');
+      const hookFn    = `checkValueHook_${valueType}_${String(op).replace(/\W/g,'_')}_${value}`;
+      const valueExprMap = {
+        credits:   'ps:getCredits()',
+        health:    'ps:getHealth()',
+        maxHealth: 'ps:getMaxHealth()',
+        factionId: 'ps:getFactionId()',
+        sectorId:  'ps:getCurrentSectorId()',
+      };
+      const valueExpr = valueExprMap[valueType] || 'ps:getCredits()';
+      return makeBinaryConditionAction(hookFn, [
+        `local ps = dialogObject:getEntity()`,
+        `if ps == nil then return -1 end`,
+        `local val = ${valueExpr}`,
+        `if val ${op} ${value} then return 0 end`,
+        `return -1`,
+      ], 'Checking condition...', success, fail);
+    }
+    case 'npc_check_flag': {
+      const flag    = block.getFieldValue('FLAG');
+      const expect  = block.getFieldValue('EXPECT');
+      const success = block.getFieldValue('SUCCESS');
+      const fail    = block.getFieldValue('FAIL');
+      const hookFn  = `checkFlagHook_${flag}_${expect}`;
+      const flagExprMap = {
+        creative: 'ps ~= nil and ps:isCreativeModeEnabled()',
+        inTeam:   'dialogObject:isConverationPartnerInTeam()',
+      };
+      const flagExpr = flagExprMap[flag] || 'false';
+      const expectLua = expect === 'true' ? 'true' : 'false';
+      const bodyLines = flag === 'creative'
+        ? [
+            `local ps = dialogObject:getEntity()`,
+            `local ok = ${flagExpr}`,
+            `if ok == ${expectLua} then return 0 end`,
+            `return -1`,
+          ]
+        : [
+            `local ok = ${flagExpr}`,
+            `if ok == ${expectLua} then return 0 end`,
+            `return -1`,
+          ];
+      return makeBinaryConditionAction(hookFn, bodyLines, 'Checking flag...', success, fail);
+    }
+    case 'npc_check_custom_condition': {
+      const expr    = block.getFieldValue('EXPR');
+      const success = block.getFieldValue('SUCCESS');
+      const fail    = block.getFieldValue('FAIL');
+      const hookFn  = `customConditionHook_${Math.abs(hashCode(expr))}`;
+      return makeBinaryConditionAction(hookFn, [
+        `if (${expr}) then return 0 end`,
+        `return -1`,
+      ], 'Checking custom condition...', success, fail);
     }
     case 'npc_get_info': {
       const infoType = block.getFieldValue('INFO_TYPE');
@@ -2137,6 +2318,80 @@ function buildActionBlock(funcName, body, boundParams, argDefs) {
     return {
       type: 'npc_give_gravity',
       fields: { STATE: gravVal }
+    };
+  }
+
+  // ── Conditions ────────────────────────────────────────────────────────────
+  const creditM = body.match(/local\s+credits\s*=\s*ps:getCredits\(\)[\s\S]*?if\s+credits\s*>=\s*(-?\d+(?:\.\d+)?)\s+then\s+return\s+0\s+end/);
+  if (creditM) {
+    return {
+      type: 'npc_check_credits',
+      fields: { AMOUNT: Number(creditM[1]), SUCCESS: 'You have enough credits!', FAIL: "You don't have enough credits." }
+    };
+  }
+
+  const valueM = body.match(/local\s+val\s*=\s*(ps:(getCredits|getHealth|getMaxHealth|getFactionId|getCurrentSectorId)\(\))[\s\S]*?if\s+val\s*(>=|<=|==|~=|>|<)\s*(-?\d+(?:\.\d+)?)\s+then\s+return\s+0\s+end/);
+  if (valueM) {
+    const methodToType = {
+      getCredits: 'credits',
+      getHealth: 'health',
+      getMaxHealth: 'maxHealth',
+      getFactionId: 'factionId',
+      getCurrentSectorId: 'sectorId',
+    };
+    return {
+      type: 'npc_check_player_value',
+      fields: {
+        VALUE_TYPE: methodToType[valueM[2]] || 'credits',
+        OP: valueM[3],
+        VALUE: Number(valueM[4]),
+        SUCCESS: 'Condition met.',
+        FAIL: 'Condition failed.',
+      }
+    };
+  }
+
+  const flagM = body.match(/local\s+ok\s*=\s*(.+?)\s*\n\s*if\s+ok\s*==\s*(true|false)\s+then\s+return\s+0\s+end/);
+  if (flagM) {
+    let flag = null;
+    if (/isCreativeModeEnabled/.test(flagM[1])) flag = 'creative';
+    if (/isConverationPartnerInTeam/.test(flagM[1])) flag = 'inTeam';
+    if (flag) {
+      return {
+        type: 'npc_check_flag',
+        fields: {
+          FLAG: flag,
+          EXPECT: flagM[2],
+          SUCCESS: 'Yes.',
+          FAIL: 'No.',
+        }
+      };
+    }
+  }
+
+  const atBlockM = body.match(/dialogObject:isAtBlock\(\s*(-?\d+)\s*,\s*(-?\d+)\s*,\s*(-?\d+)\s*\)/);
+  if (atBlockM && /return\s+-1/.test(body)) {
+    return {
+      type: 'npc_is_at_block',
+      fields: {
+        X: parseInt(atBlockM[1]),
+        Y: parseInt(atBlockM[2]),
+        Z: parseInt(atBlockM[3]),
+        SUCCESS: 'You are in position!',
+        FAIL: 'You need to go to the marker.',
+      }
+    };
+  }
+
+  const customCondM = body.match(/^if\s*\((.+)\)\s*then\s*return\s+0\s+end\s*\n\s*return\s+-1\s*$/s);
+  if (customCondM) {
+    return {
+      type: 'npc_check_custom_condition',
+      fields: {
+        EXPR: customCondM[1].trim(),
+        SUCCESS: 'Condition met.',
+        FAIL: 'Condition failed.',
+      }
     };
   }
 
