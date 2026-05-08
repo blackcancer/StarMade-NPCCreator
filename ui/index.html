@@ -143,6 +143,23 @@
     .blocklyScrollbarHandle { fill: #0f3460; }
     .blocklyScrollbarBackground { fill: #1a1a2e; }
 
+    /* ── Blockly tooltip ─────────────────────────────────────────────────────────── */
+    .blocklyTooltipDiv {
+      z-index: 99999 !important;
+      max-width: 380px !important;
+      white-space: pre-line !important;
+      background: #1e2a3a !important;
+      color: #c9d1d9 !important;
+      border: 1px solid #3498db !important;
+      border-radius: 8px !important;
+      padding: 10px 14px !important;
+      font-size: 0.78rem !important;
+      line-height: 1.6 !important;
+      font-family: 'Segoe UI', Arial, sans-serif !important;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.6) !important;
+      pointer-events: none !important;
+    }
+
     /* ── Copy badge ──────────────────────────────────────────────────────────── */
     #copyBadge {
       display: none;
@@ -182,7 +199,7 @@
   <button class="btn btn-primary" onclick="generateAndShow()" title="Generate Lua script from blocks">▶ Generate Lua</button>
   <button class="btn btn-success" onclick="copyLua()" title="Copy Lua to clipboard">📋 Copy</button>
   <button class="btn btn-success" onclick="downloadLua()" title="Download the generated .lua file">⬇ Download .lua</button>
-  <input type="file" id="fileInput" accept=".json" style="display:none" onchange="onFileLoad(event)" />
+  <input type="file" id="fileInput" accept=".json,.lua" style="display:none" onchange="onFileLoad(event)" />
 </header>
 
 <!-- ── Main ───────────────────────────────────────────────────────────────── -->
@@ -310,16 +327,11 @@ Blockly.Blocks['npc_greeting'] = {
     this.setNextStatement(true, null);
     this.setColour('#4a90d9');
     this.setTooltip(
-      '💬 GREETING\n' +
-      'The first message shown to the player when they interact with this NPC.\n\n' +
-      'Placeholders:\n' +
-      '  {name}    → NPC display name\n' +
-      '  {partner} → NPC affinity label\n' +
-      '  {faction} → NPC faction name\n' +
-      '  {owner}   → NPC commander name\n' +
-      '  {self}    → Player account name\n\n' +
+      'GREETING\nOpening text shown when player talks to this NPC.\n\n' +
+      'Placeholders:\n  {name}    NPC display name\n  {partner} NPC affinity\n' +
+      '  {faction} NPC faction\n  {owner}   NPC commander\n  {self}    Player name\n\n' +
       'Attach Choice blocks to add player options.\n' +
-      '"Show for" sets the message display duration in milliseconds.'
+      '"Show for (ms)" sets the display duration.'
     );
   }
 };
@@ -335,11 +347,10 @@ Blockly.Blocks['npc_choice'] = {
     this.setNextStatement(true, ['npc_choice', 'npc_goback']);
     this.setColour('#4a90d9');
     this.setTooltip(
-      '📌 CHOICE\n' +
-      'A button option shown to the player during the conversation.\n\n' +
-      'The label is the text on the button.\n' +
-      'Connect an Action block inside to define what happens when the player clicks it.\n\n' +
-      'Chain multiple Choices with the top/bottom connectors.'
+      'CHOICE\nA button shown to the player.\n\n' +
+      'Label = button text.\n' +
+      'Drop an Action block inside to define what happens on click.\n' +
+      'Chain multiple Choices with top/bottom connectors.'
     );
   }
 };
@@ -354,10 +365,8 @@ Blockly.Blocks['npc_goback'] = {
     this.setNextStatement(true, ['npc_choice', 'npc_goback']);
     this.setColour('#4a90d9');
     this.setTooltip(
-      '↩ GO BACK\n' +
-      'Adds a button that brings the player back to the previous dialog node.\n\n' +
-      'Use this to let the player navigate menus without dead ends.\n' +
-      'Always place this as the last choice in a menu.'
+      'GO BACK\nAdds a "back" button to the previous dialog node.\n\n' +
+      'Place this as the LAST choice in a menu to avoid dead ends.'
     );
   }
 };
@@ -375,15 +384,10 @@ Blockly.Blocks['npc_hire'] = {
     this.setNextStatement(true, null);
     this.setColour('#27ae60');
     this.setTooltip(
-      '🤝 HIRE CREW\n' +
-      'Lets the player hire this NPC as a crew member for a credit cost.\n\n' +
-      'Hook return codes:\n' +
-      '   0  → success (player has credits, crew slot free)\n' +
-      '  -1  → not enough credits\n' +
-      '  -2  → crew slot limit reached\n' +
-      '  -3  → NPC refuses (wrong faction, etc.)\n\n' +
-      'Set price = 0 for a free hire.\n' +
-      'The NPC must be the direct conversation partner.'
+      'HIRE CREW\nHire this NPC as crew for a credit cost.\n\n' +
+      'Return codes:\n  0  success\n  -1 not enough credits\n' +
+      '  -2 crew limit reached\n  -3 NPC refuses\n\n' +
+      'Set price=0 for free. NPC must be conversation partner.'
     );
   }
 };
@@ -398,10 +402,9 @@ Blockly.Blocks['npc_unhire'] = {
     this.setNextStatement(true, null);
     this.setColour('#27ae60');
     this.setTooltip(
-      '👋 DISMISS CREW\n' +
-      'Removes this NPC from the player crew team.\n\n' +
-      'Only works when the NPC is currently in the player team\n' +
-      '(use isConverationPartnerInTeam to check first in Custom Hook).'
+      'DISMISS CREW\nRemoves this NPC from the player crew.\n\n' +
+      'Only works if NPC is in player team.\n' +
+      'Use a Custom Hook with isConverationPartnerInTeam() to check first.'
     );
   }
 };
@@ -417,14 +420,9 @@ Blockly.Blocks['npc_spawn_crew'] = {
     this.setNextStatement(true, null);
     this.setColour('#27ae60');
     this.setTooltip(
-      '➕ SPAWN CREW\n' +
-      'Spawns a new crew entity for the given credit cost.\n\n' +
-      'Unlike Hire, this creates a brand new crew member\n' +
-      'rather than converting the NPC itself.\n\n' +
-      'Hook return codes:\n' +
-      '   0  → success\n' +
-      '  -1  → not enough credits\n' +
-      '  -2  → crew limit reached'
+      'SPAWN CREW\nSpawns a new crew member for a credit cost.\n\n' +
+      'Unlike Hire, creates a new crew entity (not the NPC itself).\n\n' +
+      'Return codes:\n  0  success\n  -1 not enough credits\n  -2 crew limit reached'
     );
   }
 };
@@ -455,25 +453,12 @@ Blockly.Blocks['npc_sell_item'] = {
     this.setNextStatement(true, null);
     this.setColour('#f39c12');
     this.setTooltip(
-      '🛒 SELL ITEM\n' +
-      'Sells a built-in weapon or tool to the player for a credit cost.\n\n' +
-      'Available items:\n' +
-      '  Laser Pistol       — ranged weapon (random color)\n' +
-      '  Sniper Rifle       — long range, high damage\n' +
-      '  Rocket Launcher    — area damage\n' +
-      '  Helmet             — personal protection\n' +
-      '  Healing Beam       — restore health\n' +
-      '  Power Supply Beam  — restore ship power\n' +
-      '  Marker Beam        — place navigation markers\n' +
-      '  Transporter Beacon — set teleport destination\n' +
-      '  Grapple Beam       — movement tool\n' +
-      '  Torch Beam         — block removal\n' +
-      '  Build Prohibiter   — block building in area\n' +
-      '  Flashlight         — illumination\n\n' +
-      'Hook return codes:\n' +
-      '   0  → success\n' +
-      '  -1  → not enough credits\n' +
-      '  -2  → inventory full'
+      'SELL ITEM\nSell a weapon or tool to the player.\n\n' +
+      'Items: Laser Pistol, Sniper Rifle, Rocket Launcher,\n' +
+      'Helmet, Healing Beam, Power Supply Beam, Marker Beam,\n' +
+      'Transporter Beacon, Grapple Beam, Torch Beam,\n' +
+      'Build Prohibiter, Flashlight.\n\n' +
+      'Return codes:\n  0  success\n  -1 not enough credits\n  -2 inventory full'
     );
   }
 };
@@ -492,19 +477,10 @@ Blockly.Blocks['npc_give_type'] = {
     this.setNextStatement(true, null);
     this.setColour('#f39c12');
     this.setTooltip(
-      '📦 GIVE BLOCK TYPE\n' +
-      'Gives the player any block type by its numeric ID.\n\n' +
-      'Block type IDs are defined in BlockConfig.xml.\n' +
-      'Example common IDs:\n' +
-      '  1   → Ship Core\n' +
-      '  598 → Grey Basic Armor\n' +
-      '  263 → Grey Standard Armor\n' +
-      '  2   → Thruster\n\n' +
-      'Check "free?" to give at no cost.\n\n' +
-      'Hook return codes:\n' +
-      '   0  → success\n' +
-      '  -1  → not enough credits\n' +
-      '  -2  → inventory full'
+      'GIVE BLOCK TYPE\nGive any block by numeric type ID (from BlockConfig.xml).\n\n' +
+      'Common IDs: 1=Ship Core, 2=Thruster, 598=Grey Armor, 263=Std Armor\n\n' +
+      'Check "free?" to skip credit cost.\n\n' +
+      'Return codes:\n  0  success\n  -1 not enough credits\n  -2 inventory full'
     );
   }
 };
@@ -527,14 +503,10 @@ Blockly.Blocks['npc_activate_block'] = {
     this.setNextStatement(true, null);
     this.setColour('#9b59b6');
     this.setTooltip(
-      '⚡ ACTIVATE BLOCK\n' +
-      'Triggers a block at the given local coordinates (relative to the NPC entity).\n\n' +
-      'States:\n' +
-      '  ON     → activate (e.g. open a door, start a machine)\n' +
-      '  OFF    → deactivate (e.g. close a door)\n' +
-      '  Toggle → switch current state\n\n' +
+      'ACTIVATE BLOCK\nTrigger a block at local coordinates.\n\n' +
+      'States: ON (activate), OFF (deactivate), Toggle (switch)\n\n' +
       'Coordinates are LOCAL to the ship/station the NPC is on.\n' +
-      'Use the in-game debug display (F9) to find block coordinates.\n\n' +
+      'Tip: use in-game F9 debug view to find block coords.\n\n' +
       'Works on Logic blocks, doors, and any activatable block.'
     );
   }
@@ -554,13 +526,10 @@ Blockly.Blocks['npc_move_to'] = {
     this.setNextStatement(true, null);
     this.setColour('#9b59b6');
     this.setTooltip(
-      '🚶 MOVE NPC TO\n' +
-      'Commands this NPC character to walk to the given local block position.\n\n' +
-      'Coordinates are LOCAL to the ship/station the NPC is on.\n\n' +
-      'Return codes:\n' +
-      '   0  → NPC started moving\n' +
-      '  -1  → destination unreachable\n\n' +
-      'The NPC uses pathfinding — blocked paths may fail.'
+      'MOVE NPC TO\nCommand the NPC to walk to local block coordinates.\n\n' +
+      'Coordinates are LOCAL to the ship/station.\n\n' +
+      'Return codes:\n  0  NPC started moving\n  -1 destination unreachable\n\n' +
+      'NPC uses pathfinding — blocked paths may fail.'
     );
   }
 };
@@ -580,15 +549,12 @@ Blockly.Blocks['npc_sqlite_table'] = {
     this.setNextStatement(true, null);
     this.setColour('#3498db');
     this.setTooltip(
-      '💾 SQLITE TABLE\n' +
-      'Defines a persistent SQLite database table for storing NPC state.\n\n' +
-      'The database file is created automatically if it does not exist.\n\n' +
-      'DB path: absolute path on the SERVER filesystem.\n' +
-      '  Example: /StarMade/server-database/npc.db\n\n' +
-      'Columns: SQL column definitions, comma-separated.\n' +
-      '  Example: player TEXT PRIMARY KEY, done INTEGER DEFAULT 0\n\n' +
-      'Requirements: the sqlite-jdbc.jar must be on the StarMade classpath.\n' +
-      'Download: https://github.com/xerial/sqlite-jdbc/releases'
+      'SQLITE TABLE\nDefine a persistent SQLite table on the server.\n\n' +
+      'DB path: absolute path on server (e.g. /StarMade/server-database/npc.db)\n\n' +
+      'Columns: SQL definitions separated by commas\n' +
+      '  e.g.: player TEXT PRIMARY KEY, done INTEGER DEFAULT 0\n\n' +
+      'Requirement: sqlite-jdbc.jar must be on the StarMade classpath.\n' +
+      'Get it at: github.com/xerial/sqlite-jdbc/releases'
     );
   }
 };
@@ -609,13 +575,12 @@ Blockly.Blocks['npc_sqlite_get'] = {
     this.setNextStatement(true, null);
     this.setColour('#3498db');
     this.setTooltip(
-      '📖 SQLITE GET\n' +
-      'Reads a value from a SQLite table for the current player.\n\n' +
-      'Table: the table name defined in a SQLite Table block.\n' +
-      'Column: the column to read.\n' +
-      'Default: Lua expression returned when no row exists (e.g. \"0\", \"nil\").\n' +
-      '→ var: local variable name to store the result in (used in Custom Hooks).\n\n' +
-      'The player key is always dialogObject:getOwnName().'
+      'SQLITE GET\nRead a column value for the current player.\n\n' +
+      'Table: table name from a SQLite Table block.\n' +
+      'Column: column to read.\n' +
+      'Default: Lua expr when no row found (e.g. "0" or "nil").\n' +
+      'var: local variable name for the result (use in Custom Hook).\n\n' +
+      'Player key is always dialogObject:getOwnName().'
     );
   }
 };
@@ -634,11 +599,10 @@ Blockly.Blocks['npc_sqlite_set'] = {
     this.setNextStatement(true, null);
     this.setColour('#3498db');
     this.setTooltip(
-      '✏️ SQLITE SET\n' +
-      'Writes a value to a SQLite table for the current player.\n\n' +
-      'Uses an UPSERT (INSERT or UPDATE) so no row needs to pre-exist.\n\n' +
-      'Value: a Lua expression (e.g. \"1\" for a string, 42 for a number).\n\n' +
-      'The player key is always dialogObject:getOwnName().'
+      'SQLITE SET\nWrite a value for the current player (upsert).\n\n' +
+      'Uses INSERT OR UPDATE — no pre-existing row needed.\n' +
+      'Value: Lua expression, e.g. "1" (string) or 42 (number).\n\n' +
+      'Player key is always dialogObject:getOwnName().'
     );
   }
 };
@@ -657,11 +621,10 @@ Blockly.Blocks['npc_sqlite_increment'] = {
     this.setNextStatement(true, null);
     this.setColour('#3498db');
     this.setTooltip(
-      '➕ SQLITE INCREMENT\n' +
-      'Increments (adds N to) a numeric column for the current player.\n\n' +
-      'If no row exists yet, creates one with the increment as the initial value.\n\n' +
-      'Useful for visit counters, quest progress, reputation, etc.\n\n' +
-      'Amount: how much to add each call (default 1).'
+      'SQLITE INCREMENT\nAdd N to a numeric column for the current player.\n\n' +
+      'Creates the row automatically if it does not exist yet.\n\n' +
+      'Use for: visit counters, quest progress, reputation, etc.\n' +
+      'Amount: how much to add per call (default 1).'
     );
   }
 };
@@ -685,25 +648,19 @@ Blockly.Blocks['npc_custom_hook'] = {
     this.setNextStatement(true, null);
     this.setColour('#e74c3c');
     this.setTooltip(
-      '🔧 CUSTOM HOOK\n' +
-      'Write arbitrary Lua code that runs when this dialog node is entered.\n\n' +
-      'Hook name: global function name (must be unique in the script).\n\n' +
-      'Lua body: one or more Lua statements separated by semicolons or newlines.\n' +
-      'The function receives (dialogObject) as its only parameter.\n' +
-      'Must end with: return <integer>\n\n' +
-      'Return codes:\n' +
-      '   0  → success → shows "On success" text\n' +
-      '  -1  → failure → shows "On fail" text\n' +
-      'Any other integer is also valid for custom branching.\n\n' +
-      'Full dialogObject API:\n' +
-      '  getOwnName()                     → player name\n' +
-      '  getConverationParterName()       → NPC name\n' +
+      'CUSTOM HOOK\nWrite raw Lua code for a fully custom action.\n\n' +
+      'Hook name: unique global function name.\n' +
+      'Lua body: any Lua code, must end with: return <int>\n\n' +
+      'Return codes:\n  0  success (shows "On success" text)\n  -1 fail (shows "On fail" text)\n\n' +
+      'dialogObject API:\n' +
+      '  getOwnName()                    player name\n' +
+      '  getConverationParterName()      NPC name\n' +
       '  getConverationPartnerFactionName()\n' +
-      '  giveType(typeId, count)          → give block\n' +
-      '  giveGravity(bool)               → toggle gravity\n' +
-      '  destroyShip(uid)                → destroy entity\n' +
-      '  setConversationState(name)      → jump to state\n' +
-      '  callTutorial(name)              → trigger tutorial'
+      '  giveType(typeId, count)         give block\n' +
+      '  giveGravity(bool)              gravity\n' +
+      '  destroyShip(uid)               destroy entity\n' +
+      '  setConversationState(name)     jump state\n' +
+      '  callTutorial(name)             tutorial'
     );
   }
 };
@@ -1230,6 +1187,25 @@ function onFileLoad(event) {
   const file = event.target.files[0];
   if (!file) return;
   const reader = new FileReader();
+
+  // ── .lua file: display in output panel (no block conversion) ──
+  if (file.name.endsWith('.lua')) {
+    reader.onload = (e) => {
+      const lua = e.target.result;
+      document.getElementById('luaOutput').innerHTML = highlight(lua);
+      showTab('lua');
+      // Extract script name from file name
+      const baseName = file.name.replace(/\.lua$/, '');
+      if (baseName) document.getElementById('scriptName').value = baseName;
+      document.getElementById('statusBar').textContent =
+        '✓ Lua file loaded: ' + file.name + ' (' + lua.split('\n').length + ' lines) — read-only view';
+    };
+    reader.readAsText(file);
+    event.target.value = '';
+    return;
+  }
+
+  // ── .json file: load Blockly workspace state ────────────────────
   reader.onload = (e) => {
     try {
       const state = JSON.parse(e.target.result);
@@ -1237,17 +1213,15 @@ function onFileLoad(event) {
       Blockly.serialization.workspaces.load(state, workspace);
       workspace.scrollCenter();
       generateAndShow();
-      // Auto-set script name from file name
       const baseName = file.name.replace(/\.workspace\.json$/, '').replace(/\.json$/, '');
       if (baseName) document.getElementById('scriptName').value = baseName;
-      document.getElementById('statusBar').textContent = '✓ Loaded: ' + file.name;
+      document.getElementById('statusBar').textContent = '✓ Workspace loaded: ' + file.name;
     } catch (err) {
       document.getElementById('statusBar').textContent = '✗ Load error: ' + err.message;
-      alert('Failed to load workspace: ' + err.message);
+      alert('Failed to load workspace:\n' + err.message);
     }
   };
   reader.readAsText(file);
-  // Reset so the same file can be reloaded
   event.target.value = '';
 }
 
