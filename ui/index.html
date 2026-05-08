@@ -298,6 +298,10 @@
   </category>
   <category name="🔧 Advanced" colour="#e74c3c">
     <block type="npc_custom_hook"></block>
+    <block type="npc_give_meta_item"></block>
+    <block type="npc_check_credits"></block>
+    <block type="npc_get_info"></block>
+    <block type="npc_is_at_block"></block>
   </category>
 </xml>
 
@@ -727,6 +731,136 @@ Blockly.Blocks['npc_sqlite_increment'] = {
   }
 };
 
+// ── npc_give_meta_item ────────────────────────────────────────────────────────
+Blockly.Blocks['npc_give_meta_item'] = {
+  init() {
+    this.appendDummyInput()
+      .appendField('📦 Give meta item')
+      .appendField(new Blockly.FieldDropdown([
+        ['Weapon (generic)',    'WEAPON'],
+        ['Helmet',             'HELMET'],
+        ['Blueprint',          'BLUEPRINT'],
+        ['Recipe',             'RECIPE'],
+        ['Log Book',           'LOG_BOOK'],
+        ['Flash Light',        'FLASH_LIGHT'],
+        ['Build Prohibiter',   'BUILD_PROHIBITER'],
+        ['Block Storage',      'BLOCK_STORAGE'],
+        ['Virtual Blueprint',  'VIRTUAL_BLUEPRINT'],
+      ]), 'META_TYPE')
+      .appendField('sub-type')
+      .appendField(new Blockly.FieldNumber(0, 0), 'SUB_TYPE')
+      .appendField('count')
+      .appendField(new Blockly.FieldNumber(1, 1), 'COUNT');
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour('#e74c3c');
+    this.setTooltip(
+      'GIVE META ITEM\nGive the player a meta-item (non-block item).\n\n' +
+      'Meta types:\n' +
+      '  WEAPON         — weapon by sub-type ID\n' +
+      '  HELMET         — space helmet\n' +
+      '  BLUEPRINT      — blueprint item\n' +
+      '  RECIPE         — crafting recipe\n' +
+      '  LOG_BOOK       — log book entry\n' +
+      '  FLASH_LIGHT    — flashlight\n' +
+      '  BUILD_PROHIBITER — build prohibition tool\n' +
+      '  BLOCK_STORAGE  — block storage device\n' +
+      '  VIRTUAL_BLUEPRINT — virtual blueprint\n\n' +
+      'Sub-type: item variant ID (weapon color, etc.)\n' +
+      'Uses: dialogObject:giveMetaItem(MetaObjectType, subType, count)'
+    );
+  }
+};
+
+// ── npc_check_credits ─────────────────────────────────────────────────────────
+Blockly.Blocks['npc_check_credits'] = {
+  init() {
+    this.appendDummyInput()
+      .appendField('💰 Check player credits ≥')
+      .appendField(new Blockly.FieldNumber(50000, 0), 'AMOUNT');
+    this.appendDummyInput()
+      .appendField('If enough →')
+      .appendField(new Blockly.FieldTextInput('You have enough credits!'), 'SUCCESS');
+    this.appendDummyInput()
+      .appendField('If not enough →')
+      .appendField(new Blockly.FieldTextInput("You don't have enough credits."), 'FAIL');
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour('#e74c3c');
+    this.setTooltip(
+      'CHECK CREDITS\nCheck if the player has at least N credits.\n\n' +
+      'Uses: PlayerState.getCredits()\n\n' +
+      'Return codes from hook:\n  0  player has >= amount\n  -1 player has < amount\n\n' +
+      'Does NOT deduct credits — use sell blocks to charge.'
+    );
+  }
+};
+
+// ── npc_get_info ───────────────────────────────────────────────────────────────
+Blockly.Blocks['npc_get_info'] = {
+  init() {
+    this.appendDummyInput()
+      .appendField('📊 Show player info')
+      .appendField(new Blockly.FieldDropdown([
+        ['Credits',         'credits'],
+        ['Health',          'health'],
+        ['Max Health',      'maxHealth'],
+        ['Faction ID',      'factionId'],
+        ['Creative Mode?',  'creative'],
+        ['Sector ID',       'sectorId'],
+      ]), 'INFO_TYPE');
+    this.appendDummyInput()
+      .appendField('Display text')
+      .appendField(new Blockly.FieldTextInput('Your credits: %s'), 'TEXT');
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour('#e74c3c');
+    this.setTooltip(
+      'SHOW PLAYER INFO\nDisplay live player data in the dialog.\n\n' +
+      'The %s in the text is replaced with the value.\n\n' +
+      'Info types:\n' +
+      '  Credits      → PlayerState.getCredits()\n' +
+      '  Health       → PlayerState.getHealth()\n' +
+      '  Max Health   → PlayerState.getMaxHealth()\n' +
+      '  Faction ID   → PlayerState.getFactionId()\n' +
+      '  Creative?    → PlayerState.isCreativeModeEnabled()\n' +
+      '  Sector ID    → PlayerState.getCurrentSectorId()\n\n' +
+      'This generates a custom hook that reads the value and\n' +
+      'shows it via dialogObject:format().'
+    );
+  }
+};
+
+// ── npc_is_at_block ───────────────────────────────────────────────────────────
+Blockly.Blocks['npc_is_at_block'] = {
+  init() {
+    this.appendDummyInput()
+      .appendField('📍 Check player at block X')
+      .appendField(new Blockly.FieldNumber(0), 'X')
+      .appendField('Y')
+      .appendField(new Blockly.FieldNumber(0), 'Y')
+      .appendField('Z')
+      .appendField(new Blockly.FieldNumber(0), 'Z');
+    this.appendDummyInput()
+      .appendField('At block →')
+      .appendField(new Blockly.FieldTextInput('You are in position!'), 'SUCCESS');
+    this.appendDummyInput()
+      .appendField('Not there →')
+      .appendField(new Blockly.FieldTextInput('You need to go to the marker.'), 'FAIL');
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour('#e74c3c');
+    this.setTooltip(
+      'CHECK PLAYER POSITION\nVerify the player is at specific block coordinates.\n\n' +
+      'Returns true when player is at (X, Y, Z) — then shows success text.\n' +
+      'Returns false otherwise — shows fail text.\n\n' +
+      'Uses: dialogObject:isAtBlock(x, y, z) → boolean\n\n' +
+      'Coordinates are LOCAL to the ship/station the NPC is on.\n' +
+      'Tip: use F9 debug view in-game to find block positions.'
+    );
+  }
+};
+
 // ── npc_custom_hook ───────────────────────────────────────────────────────────
 Blockly.Blocks['npc_custom_hook'] = {
   init() {
@@ -1023,17 +1157,96 @@ function processActionBlock(block, parentVarName) {
       const seqName = block.getFieldValue('NAME');
       const seqBody = block.getFieldValue('BODY');
       const hookFn = `${seqName.replace(/\W/g,'_')}Hook`;
-      // Split body by ; and generate a Lua function that calls each in sequence
       const steps = seqBody.split(';').map(s => s.trim()).filter(Boolean);
-      const body = steps.length > 0
-        ? [...steps, 'return 0']
-        : ['return 0'];
+      const body = steps.length > 0 ? [...steps, 'return 0'] : ['return 0'];
       registerHook(hookFn, body);
       const waitVn = makeNode('Running sequence...');
       const successVn = makeNode('Sequence complete!');
       const waitNode = getNode(waitVn);
       waitNode.hook = hookFn;
       waitNode.reactions = [{ code: 0, target: successVn }];
+      return waitVn;
+    }
+    case 'npc_give_meta_item': {
+      const metaType  = block.getFieldValue('META_TYPE');
+      const subType   = block.getFieldValue('SUB_TYPE');
+      const count     = block.getFieldValue('COUNT');
+      const hookFn = `giveMetaItemHook_${metaType}_${subType}`;
+      const metaClass = 'org.schema.game.common.data.element.meta.MetaObjectManager$MetaObjectType';
+      registerHook(hookFn, [
+        `local MetaType = luajava.bindClass("${metaClass}")`,
+        `return dialogObject:giveMetaItem(MetaType.${metaType}, ${subType}, ${count});`,
+      ]);
+      const waitVn = makeNode('Please wait...');
+      const successVn = makeNode('Here you go!');
+      const failVn  = makeNode("You don't have enough credits or space.");
+      const waitNode = getNode(waitVn);
+      waitNode.hook = hookFn;
+      waitNode.reactions = [{ code: 0, target: successVn }, { code: -1, target: failVn }];
+      return waitVn;
+    }
+    case 'npc_check_credits': {
+      const amount  = block.getFieldValue('AMOUNT');
+      const success = block.getFieldValue('SUCCESS');
+      const fail    = block.getFieldValue('FAIL');
+      const hookFn  = `checkCreditsHook_${amount}`;
+      registerHook(hookFn, [
+        `local ps = dialogObject:getEntity()`,
+        `if ps == nil then return -1 end`,
+        `local credits = ps:getCredits()`,
+        `if credits >= ${amount} then return 0 end`,
+        `return -1`,
+      ]);
+      const waitVn = makeNode('Checking...');
+      const successVn = makeNode(success);
+      const failVn  = makeNode(fail);
+      const waitNode = getNode(waitVn);
+      waitNode.hook = hookFn;
+      waitNode.reactions = [{ code: 0, target: successVn }, { code: -1, target: failVn }];
+      return waitVn;
+    }
+    case 'npc_get_info': {
+      const infoType = block.getFieldValue('INFO_TYPE');
+      const text     = block.getFieldValue('TEXT');
+      const hookFn   = `getInfoHook_${infoType}`;
+      const infoCallMap = {
+        credits:    'ps:getCredits()',
+        health:     'math.floor(ps:getHealth())',
+        maxHealth:  'math.floor(ps:getMaxHealth())',
+        factionId:  'ps:getFactionId()',
+        creative:   'tostring(ps:isCreativeModeEnabled())',
+        sectorId:   'ps:getCurrentSectorId()',
+      };
+      const infoCall = infoCallMap[infoType] || 'ps:getCredits()';
+      registerHook(hookFn, [
+        `local ps = dialogObject:getEntity()`,
+        `if ps == nil then return 0 end`,
+        `local val = ${infoCall}`,
+        `local msg = dialogObject:format("${text.replace(/"/g,'\\"')}", tostring(val))`,
+        `return 0`,
+      ]);
+      const waitVn = makeNode(text.replace('%s', '...'));
+      const waitNode = getNode(waitVn);
+      waitNode.hook = hookFn;
+      return waitVn;
+    }
+    case 'npc_is_at_block': {
+      const x = block.getFieldValue('X');
+      const y = block.getFieldValue('Y');
+      const z = block.getFieldValue('Z');
+      const success = block.getFieldValue('SUCCESS');
+      const fail    = block.getFieldValue('FAIL');
+      const hookFn  = `isAtBlockHook_${x}_${y}_${z}`;
+      registerHook(hookFn, [
+        `if dialogObject:isAtBlock(${x}, ${y}, ${z}) then return 0 end`,
+        `return -1`,
+      ]);
+      const waitVn = makeNode('Checking position...');
+      const successVn = makeNode(success);
+      const failVn  = makeNode(fail);
+      const waitNode = getNode(waitVn);
+      waitNode.hook = hookFn;
+      waitNode.reactions = [{ code: 0, target: successVn }, { code: -1, target: failVn }];
       return waitVn;
     }
     case 'npc_sqlite_get': {

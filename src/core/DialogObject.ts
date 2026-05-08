@@ -123,12 +123,30 @@ export interface DialogObject {
   giveType(type: number, count: number): number;
 
   /**
-   * Give the player a meta item (weapon, tool, etc.) of a specific MetaObjectType.
-   * @param metaType  Java MetaObjectManager.MetaObjectType ordinal
-   * @param type      Item sub-type
-   * @param count     Count
+   * Give the player a meta item of a specific MetaObjectType.
+   *
+   * MetaObjectType values (bind with luajava.bindClass):
+   *   WEAPON, HELMET, BLUEPRINT, RECIPE, LOG_BOOK,
+   *   FLASH_LIGHT, BUILD_PROHIBITER, BLOCK_STORAGE, VIRTUAL_BLUEPRINT
+   *
+   * Usage in Lua:
+   *   local MetaType = luajava.bindClass("org.schema.game.common.data.element.meta.MetaObjectManager$MetaObjectType")
+   *   dialogObject:giveMetaItem(MetaType.WEAPON, 0, 1)
+   *
+   * @param metaType  MetaObjectType enum value
+   * @param subType   Item sub-type ID (weapon color, etc.)
+   * @param count     Count to give
+   * Returns: 0=success, -1=not enough credits, -2=inventory full
    */
-  giveMetaItem(metaType: number, type: number, count: number): number;
+  giveMetaItem(metaType: unknown, subType: number, count: number): number;
+
+  // ── Player state access (via getEntity()) ─────────────────────────────────
+  // Note: getEntity() returns the PlayerState. These are accessed as:
+  //   dialogObject:getEntity():getCredits()
+  //   dialogObject:getEntity():getHealth()
+  //   etc.
+  // The Lua code must call getEntity() first to get the PlayerState reference.
+  // These are NOT direct methods on dialogObject — see AIGameEntityState.getEntity()
 
   // ── World interaction ─────────────────────────────────────────────────────────
 
@@ -200,6 +218,24 @@ export const JAVA_CLASSES = {
   TextEntry:                   'org.schema.game.common.data.player.dialog.TextEntry',
   DialogTextEntryHookLua:      'org.schema.game.common.data.player.dialog.DialogTextEntryHookLua',
 } as const;
+
+/**
+ * MetaObjectType values for giveMetaItem().
+ * Bind with: luajava.bindClass("org.schema.game.common.data.element.meta.MetaObjectManager$MetaObjectType")
+ */
+export const META_OBJECT_TYPES = [
+  'WEAPON',
+  'HELMET',
+  'BLUEPRINT',
+  'RECIPE',
+  'LOG_BOOK',
+  'FLASH_LIGHT',
+  'BUILD_PROHIBITER',
+  'BLOCK_STORAGE',
+  'VIRTUAL_BLUEPRINT',
+] as const;
+
+export type MetaObjectType = typeof META_OBJECT_TYPES[number];
 
 /** Return code constants from dialogObject methods. */
 export const HOOK_RESULT = {
