@@ -309,6 +309,8 @@
     <block type="npc_cond_flag"></block>
     <block type="npc_cond_is_at_block"></block>
     <block type="npc_cond_custom"></block>
+    <block type="npc_cond_sqlite_value"></block>
+    <block type="npc_cond_sqlite_exists"></block>
     <block type="npc_cond_and"></block>
     <block type="npc_cond_or"></block>
     <block type="npc_cond_not"></block>
@@ -1033,6 +1035,57 @@ Blockly.Blocks['npc_cond_custom'] = {
   }
 };
 
+// ── npc_cond_sqlite_value ────────────────────────────────────────────────────
+Blockly.Blocks['npc_cond_sqlite_value'] = {
+  init() {
+    this.appendDummyInput()
+      .appendField('SQLite')
+      .appendField(new Blockly.FieldTextInput('quest_state'), 'TABLE')
+      .appendField('.')
+      .appendField(new Blockly.FieldTextInput('done'), 'COL')
+      .appendField(new Blockly.FieldDropdown([
+        ['≥', '>='],
+        ['>',  '>'],
+        ['=',  '=='],
+        ['≠',  '~='],
+        ['≤',  '<='],
+        ['<',  '<'],
+      ]), 'OP')
+      .appendField(new Blockly.FieldTextInput('1'), 'VALUE');
+    this.appendDummyInput()
+      .appendField('Default if missing')
+      .appendField(new Blockly.FieldTextInput('0'), 'DEFAULT');
+    this.setOutput(true, 'npc_condition');
+    this.setColour('#16a085');
+    this.setTooltip(
+      'SQLITE VALUE CONDITION\nCompare a SQLite column for the current player.\n\n' +
+      'Example:\n' +
+      '  table=quest_state column=done op== value=1 default=0\n\n' +
+      'Important: requires at least one SQLite Table block so database helpers are generated.'
+    );
+  }
+};
+
+// ── npc_cond_sqlite_exists ───────────────────────────────────────────────────
+Blockly.Blocks['npc_cond_sqlite_exists'] = {
+  init() {
+    this.appendDummyInput()
+      .appendField('SQLite row exists in')
+      .appendField(new Blockly.FieldTextInput('quest_state'), 'TABLE')
+      .appendField('is')
+      .appendField(new Blockly.FieldDropdown([
+        ['true', 'true'],
+        ['false', 'false'],
+      ]), 'EXPECT');
+    this.setOutput(true, 'npc_condition');
+    this.setColour('#16a085');
+    this.setTooltip(
+      'SQLITE EXISTS CONDITION\nCheck whether the current player already has a row in a SQLite table.\n\n' +
+      'Important: requires at least one SQLite Table block so database helpers are generated.'
+    );
+  }
+};
+
 // ── npc_cond_and ─────────────────────────────────────────────────────────────
 Blockly.Blocks['npc_cond_and'] = {
   init() {
@@ -1289,6 +1342,19 @@ function buildConditionExpression(block) {
     case 'npc_cond_custom': {
       const expr = block.getFieldValue('EXPR') || 'false';
       return `(${expr})`;
+    }
+    case 'npc_cond_sqlite_value': {
+      const table = String(block.getFieldValue('TABLE') || 'quest_state').replace(/"/g, '\\"');
+      const col   = String(block.getFieldValue('COL') || 'done').replace(/"/g, '\\"');
+      const op    = block.getFieldValue('OP') || '==';
+      const value = block.getFieldValue('VALUE') || '1';
+      const def   = block.getFieldValue('DEFAULT') || '0';
+      return `(_dbGetPlayerValue("${table}", "${col}", dialogObject:getOwnName(), ${def}) ${op} ${value})`;
+    }
+    case 'npc_cond_sqlite_exists': {
+      const table  = String(block.getFieldValue('TABLE') || 'quest_state').replace(/"/g, '\\"');
+      const expect = block.getFieldValue('EXPECT') === 'false' ? 'false' : 'true';
+      return `(_dbHasPlayerRow("${table}", dialogObject:getOwnName()) == ${expect})`;
     }
     case 'npc_cond_and': {
       const a = buildConditionExpression(block.getInputTargetBlock('A'));
@@ -1852,6 +1918,14 @@ function generateLua(scriptName) {
     lines.push(`  local cur=_dbGet("SELECT "..col.." FROM "..t.." WHERE "..kc.."=?",kv)`);
     lines.push(`  if cur==nil then _dbExec("INSERT INTO "..t.."("..kc..","..col..")VALUES(?,?)",kv,n)`);
     lines.push(`  else _dbExec("UPDATE "..t.." SET "..col.."="..col.."+? WHERE "..kc.."=?",n,kv) end`);
+    lines.push(`end`);
+    lines.push(`local function _dbGetPlayerValue(t,col,player,def)`);
+    lines.push(`  local v = _dbGet("SELECT "..col.." FROM "..t.." WHERE player=?", player)`);
+    lines.push(`  if v==nil then return def end`);
+    lines.push(`  return v`);
+    lines.push(`end`);
+    lines.push(`local function _dbHasPlayerRow(t, player)`);
+    lines.push(`  return _dbGet("SELECT 1 FROM "..t.." WHERE player=?", player) ~= nil`);
     lines.push(`end`);
     lines.push(``);
   }
@@ -2513,6 +2587,31 @@ function buildConditionBlockFromExpression(expr) {
     return {
       type: 'npc_cond_is_at_block',
       fields: { X: parseInt(m[1]), Y: parseInt(m[2]), Z: parseInt(m[3]) }
+    };
+  }
+
+  m = expr.match(/^_dbGetPlayerValue\("([^"]+)",\s*"([^"]+)",\s*dialogObject:getOwnName\(\),\s*(.+?)\)\s*(>=|<=|==|~=|>|<)\s*(.+)$/);
+  if (m) {
+    return {
+      type: 'npc_cond_sqlite_value',
+      fields: {
+        TABLE: m[1],
+        COL: m[2],
+        DEFAULT: m[3].trim(),
+        OP: m[4],
+        VALUE: m[5].trim(),
+      }
+    };
+  }
+
+  m = expr.match(/^_dbHasPlayerRow\("([^"]+)",\s*dialogObject:getOwnName\(\)\)\s*==\s*(true|false)$/);
+  if (m) {
+    return {
+      type: 'npc_cond_sqlite_exists',
+      fields: {
+        TABLE: m[1],
+        EXPECT: m[2],
+      }
     };
   }
 
