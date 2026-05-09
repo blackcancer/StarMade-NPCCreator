@@ -1455,6 +1455,23 @@ function hashCode(s) {
   return h;
 }
 
+function escapeRegExp(s) {
+  return String(s || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function resolveLuaNumeric(token, body, constVals) {
+  token = String(token || '').trim().replace(/;$/, '');
+  if (!token) return 0;
+  if (/^-?\d+(?:\.\d+)?$/.test(token)) return Number(token);
+  const localRe = new RegExp(`(?:^|\\r?\\n)\\s*(?:local\\s+)?${escapeRegExp(token)}\\s*=\\s*(-?\\d+(?:\\.\\d+)?)\\s*;?`, 'm');
+  const localM = String(body || '').match(localRe);
+  if (localM) return Number(localM[1]);
+  if (constVals && Object.prototype.hasOwnProperty.call(constVals, token)) {
+    return Number(constVals[token]) || 0;
+  }
+  return 0;
+}
+
 function makeBinaryConditionAction(hookFn, bodyLines, waitText, successText, failText) {
   registerHook(hookFn, bodyLines);
   const waitVn    = makeNode(waitText || 'Checking...');
@@ -2314,13 +2331,63 @@ function generateLua(scriptName) {
 // SYNTAX HIGHLIGHT (minimal, no deps)
 // ──────────────────────────────────────────────────────────────────────────────
 function highlight(code) {
-  return code
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-    .replace(/(--.*$)/gm, '<span class="cmt">$1</span>')
-    .replace(/\b(function|local|return|if|then|else|elseif|end|and|or|not|for|in|do|while|repeat|until)\b/g, '<span class="kw">$1</span>')
-    .replace(/"([^"\\]|\\.)*"/g, '<span class="str">$&</span>')
-    .replace(/\[\[[\s\S]*?\]\]/g, '<span class="str">$&</span>')
-    .replace(/\b(\d+)\b/g, '<span class="num">$1</span>');
+  const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const kws = new Set(['function','local','return','if','then','else','elseif','end','and','or','not','for','in','do','while','repeat','until']);
+  let out = '';
+  let i = 0;
+  while (i < code.length) {
+    const ch = code[i];
+    const next = code[i + 1];
+
+    if (ch === '-' && next === '-') {
+      let j = i + 2;
+      while (j < code.length && code[j] !== '\n') j++;
+      out += `<span class="cmt">${esc(code.slice(i, j))}</span>`;
+      i = j;
+      continue;
+    }
+
+    if (ch === '[' && next === '[') {
+      let j = i + 2;
+      while (j < code.length && !(code[j] === ']' && code[j + 1] === ']')) j++;
+      j = Math.min(code.length, j + 2);
+      out += `<span class="str">${esc(code.slice(i, j))}</span>`;
+      i = j;
+      continue;
+    }
+
+    if (ch === '"') {
+      let j = i + 1;
+      while (j < code.length) {
+        if (code[j] === '"' && code[j - 1] !== '\\') { j++; break; }
+        j++;
+      }
+      out += `<span class="str">${esc(code.slice(i, j))}</span>`;
+      i = j;
+      continue;
+    }
+
+    if (/[A-Za-z_]/.test(ch)) {
+      let j = i + 1;
+      while (j < code.length && /[A-Za-z0-9_]/.test(code[j])) j++;
+      const word = code.slice(i, j);
+      out += kws.has(word) ? `<span class="kw">${word}</span>` : esc(word);
+      i = j;
+      continue;
+    }
+
+    if (/\d/.test(ch) && !/[A-Za-z_]/.test(code[i - 1] || '')) {
+      let j = i + 1;
+      while (j < code.length && /[\d.]/.test(code[j])) j++;
+      out += `<span class="num">${code.slice(i, j)}</span>`;
+      i = j;
+      continue;
+    }
+
+    out += esc(ch);
+    i++;
+  }
+  return out;
 }
 
 
@@ -2605,24 +2672,41 @@ function loadExample() {
 
 function parseLuaToBlocklyState(lua) {
 
-  // ── Step 1: Extract global hook function bodies ─────────────────────────────
-  // Format 1 (NPCCreator): function name(dialogObject)\n  body\nend
-  // Format 2 (vanilla):    function name(dialogObject, ...args)\n  body\nend
+  // ── Step 1: Extract global function bodies + constants ─────────────────────
   const hookBodies  = {};  // funcName → body string
   const hookArgDefs = {};  // funcName → extra param names e.g. ['x','y','z']
+  const fnBodies    = {};  // any pre-create function body
+  const fnArgDefs   = {};  // any pre-create function arg names
+  const constVals   = {};  // priceLaser → 100000
 
-  const createIdx   = lua.search(/\nfunction create\s*\(/);
+  const createIdx    = lua.search(/\r?\nfunction create\s*\(/);
   const beforeCreate = createIdx >= 0 ? lua.slice(0, createIdx) : lua;
 
-  const hookFnRe = /^function\s+(\w+)\s*\(dialogObject([^)]*)\)\n([\s\S]+?)\nend/gm;
+  const anyFnRe = /^function\s+(\w+)\s*\(([^)]*)\)\r?\n([\s\S]+?)\r?\nend/gm;
   let hm;
-  while ((hm = hookFnRe.exec(beforeCreate)) !== null) {
-    hookBodies[hm[1]]  = hm[3].trim();
-    hookArgDefs[hm[1]] = hm[2].split(',').map(s => s.trim()).filter(Boolean);
+  while ((hm = anyFnRe.exec(beforeCreate)) !== null) {
+    const fnName = hm[1];
+    const argDefs = hm[2].split(',').map(s => s.trim()).filter(Boolean);
+    const body = hm[3].trim();
+    fnBodies[fnName] = body;
+    fnArgDefs[fnName] = argDefs;
+    if (argDefs[0] === 'dialogObject') {
+      hookBodies[fnName] = body;
+      hookArgDefs[fnName] = argDefs.slice(1);
+    }
+  }
+
+  const constRe = /^\s*(?:local\s+)?(\w+)\s*=\s*(-?\d+(?:\.\d+)?|"(?:[^"\\]|\\.)*")\s*;?\s*$/gm;
+  let cm;
+  while ((cm = constRe.exec(beforeCreate)) !== null) {
+    let val = cm[2];
+    if (/^"/.test(val)) val = val.slice(1, -1).replace(/\\n/g, '\n').replace(/\\"/g, '"').replace(/\\\\/g, '\\');
+    else val = Number(val);
+    constVals[cm[1]] = val;
   }
 
   // ── Step 2: Extract create() body ─────────────────────────────────────────
-  const createMatch = lua.match(/function create\s*\(dialogObject,\s*bindings\)([\s\S]+?)^end/m);
+  const createMatch = lua.match(/function create\s*\(dialogObject,\s*bindings\)\r?\n([\s\S]+?)^end/m);
   if (!createMatch) throw new Error('No create() function found.');
   const createBody = createMatch[1];
 
@@ -2632,28 +2716,118 @@ function parseLuaToBlocklyState(lua) {
   const hookOf    = {};   // nodeVarName → hookVarName (from setHook)
   const addCalls  = [];   // { fromVar, targetVar, label }
   let   rootVar   = null;
-  const TextEntry_RE = /org\.schema\.game\.common\.data\.player\.dialog\.TextEntry/;
-  const HookLua_RE   = /org\.schema\.game\.common\.data\.player\.dialog\.DialogTextEntryHookLua/;
 
-  // Pre-join multi-line statements into single logical lines
-  const logicalLines = [];
-  {
-    const rawLines = createBody.split('\n');
+  function splitLuaArgs(argText) {
+    const out = [];
+    let cur = '';
+    let depth = 0;
+    let inString = false;
+    for (let i = 0; i < argText.length; i++) {
+      const ch = argText[i];
+      if (ch === '"' && argText[i - 1] !== '\\') inString = !inString;
+      if (!inString) {
+        if (ch === '(' || ch === '{' || ch === '[') depth++;
+        else if (ch === ')' || ch === '}' || ch === ']') depth--;
+        else if (ch === ',' && depth === 0) {
+          out.push(cur.trim());
+          cur = '';
+          continue;
+        }
+      }
+      cur += ch;
+    }
+    if (cur.trim()) out.push(cur.trim());
+    return out;
+  }
+
+  function toLogicalLines(body) {
+    const lines = [];
+    const rawLines = body.split(/\r?\n/);
     let current = '';
     for (const rawLine of rawLines) {
-      if (!current) {
-        current = rawLine;
-      } else {
-        current += ' ' + rawLine.trim();
-      }
-      // A logical line ends when parens are balanced AND it doesn't end with ..
+      if (!current) current = rawLine;
+      else current += ' ' + rawLine.trim();
       const trimmed = current.trimEnd();
       if (countOpen(current) <= 0 && !trimmed.endsWith('..') && !trimmed.endsWith(',')) {
-        logicalLines.push(current);
+        lines.push(current);
         current = '';
       }
     }
-    if (current.trim()) logicalLines.push(current);
+    if (current.trim()) lines.push(current);
+    return lines;
+  }
+
+  const logicalLines = [];
+  const pendingLines = toLogicalLines(createBody);
+  let helperSeq = 0;
+  while (pendingLines.length > 0) {
+    const line = pendingLines.shift();
+    const trimmed = line.trim();
+    const callM = trimmed.match(/^(\w+)\s*\((.*)\)\s*;?$/);
+    if (callM && fnBodies[callM[1]] && callM[1] !== 'create') {
+      const fnName = callM[1];
+      const body = fnBodies[fnName] || '';
+      if (/(?:add\(|newInstance|setHook|addReaction|setRootEntry)/.test(body)) {
+        const params = fnArgDefs[fnName] || [];
+        const args = splitLuaArgs(callM[2]);
+        const helperLines = toLogicalLines(body);
+        const locals = Array.from(new Set((body.match(/(?:^|\r?\n)\s*(?:local\s+)?(\w+)\s*=/gm) || [])
+          .map(s => (s.match(/(\w+)\s*=/) || [])[1])
+          .filter(Boolean)
+          .filter(v => !params.includes(v))));
+        const prefix = `__${fnName}_${++helperSeq}_`;
+        const expanded = helperLines.map(src => {
+          let out = src;
+          for (const localName of locals) out = out.replace(new RegExp(`\\b${escapeRegExp(localName)}\\b`, 'g'), `${prefix}${localName}`);
+          params.forEach((p, i) => {
+            const arg = args[i] || p;
+            out = out.replace(new RegExp(`\\b${escapeRegExp(p)}\\b`, 'g'), arg);
+          });
+          return out;
+        });
+        pendingLines.unshift(...expanded.reverse());
+        continue;
+      }
+    }
+    logicalLines.push(line);
+  }
+
+  function decodeLuaString(raw) {
+    return String(raw || '').replace(/\\n/g,'\n').replace(/\\"/g,'"').replace(/\\\\/g,'\\');
+  }
+
+  function extractDialogText(line) {
+    const textM = line.match(/dialogObject:format\s*\(\s*"((?:[^"\\]|\\.)*)"/);
+    const rawTextM = line.match(/newInstance\s*\([^,]+,\s*"((?:[^"\\]|\\.)*)"/);
+    if (textM) {
+      let text = decodeLuaString(textM[1]);
+      const afterQuote = line.slice(line.indexOf(textM[0]) + textM[0].length);
+      const concatRe = /\.\.\s*"((?:[^"\\]|\\.)*)"/g;
+      let cleanedAfterQuote = afterQuote;
+      let sm;
+      while ((sm = concatRe.exec(afterQuote)) !== null) text += decodeLuaString(sm[1]);
+      cleanedAfterQuote = cleanedAfterQuote.replace(concatRe, '');
+      const phMap = {
+        'getConverationParterName':        '{name}',
+        'getConverationPartnerAffinity':   '{partner}',
+        'getConverationPartnerFactionName':'{faction}',
+        'getConverationPartnerOwnerName':  '{owner}',
+        'getOwnName':                      '{self}',
+        'getName':                         '{entity}',
+      };
+      const argRe = /,\s*(?:dialogObject:(?:\w+\s*\(\s*\)\s*:\s*)?(\w+)\s*\(\s*\)|([A-Za-z_]\w*)|(-?\d+(?:\.\d+)?))/g;
+      let am;
+      while ((am = argRe.exec(cleanedAfterQuote)) !== null) {
+        let repl = '%s';
+        if (am[1]) repl = phMap[am[1]] || '%s';
+        else if (am[2] && Object.prototype.hasOwnProperty.call(constVals, am[2])) repl = String(constVals[am[2]]);
+        else if (am[3]) repl = am[3];
+        text = text.replace('%s', repl);
+      }
+      return text;
+    }
+    if (rawTextM) return decodeLuaString(rawTextM[1]);
+    return '';
   }
 
   for (const rawLine of logicalLines) {
@@ -2676,46 +2850,8 @@ function parseLuaToBlocklyState(lua) {
     const nodeM = line.match(/(?:local\s+)?(\w+)\s*=\s*luajava\.newInstance\s*\(\s*(?:"[^"]*(?:TextEntry|CancelDialogEntry)[^"]*"|TextEntry|CancelDialogEntry)\s*,\s*/);
     if (nodeM) {
       const varName = nodeM[1];
-      // Safety guard (should not be needed if hookInstM2 runs first)
       if (varName.startsWith('hook_') || hookInsts[varName]) continue;
-      const textM = line.match(/dialogObject:format\s*\(\s*"((?:[^"\\]|\\.)*)"/);
-      const rawTextM = line.match(/newInstance\s*\([^,]+,\s*"((?:[^"\\]|\\.)*)"/);
-      let text = '';
-      if (textM) {
-        let raw = textM[1].replace(/\\n/g,'\n').replace(/\\"/g,'"').replace(/\\\\/g,'\\');
-        // Collect dialogObject:method() args in order after the format string
-        const afterQuote = line.slice(line.indexOf(textM[0]) + textM[0].length);
-        // Match dialogObject:method() OR dialogObject:getEntity():method()
-        const argRe2 = /dialogObject:(?:\w+\s*\(\s*\)\s*:\s*)?(\w+)\s*\(\s*\)/g;
-        let am2;
-        const argOrder = [];
-        while ((am2 = argRe2.exec(afterQuote)) !== null) {
-          // Skip 'getEntity' itself — we want the final method name
-          if (am2[1] !== 'getEntity') argOrder.push(am2[1]);
-        }
-        const phMap = {
-          'getConverationParterName':        '{name}',
-          'getConverationPartnerAffinity':   '{partner}',
-          'getConverationPartnerFactionName':'{faction}',
-          'getConverationPartnerOwnerName':  '{owner}',
-          'getOwnName':                      '{self}',
-          'getName':                         '{entity}',  // dialogObject:getEntity():getName()
-        };
-        for (const m of argOrder) raw = raw.replace('%s', phMap[m] || '%s');
-        text = raw;
-      } else if (rawTextM) {
-        // Plain string (no format call) — vanilla style
-        text = rawTextM[1].replace(/\\n/g,'\n').replace(/\\"/g,'"').replace(/\\\\/g,'\\');
-      }
-      // Collect remaining string concatenations (.. "..." patterns)
-      const concatRe = /\.\.\s*"((?:[^"\\]|\\.)*)"/g;
-      const startIdx = line.indexOf(textM ? textM[0] : (rawTextM ? rawTextM[0] : ''));
-      if (startIdx >= 0) {
-        let cm;
-        while ((cm = concatRe.exec(line.slice(startIdx))) !== null) {
-          text += cm[1].replace(/\\n/g,'\n').replace(/\\"/g,'"').replace(/\\\\/g,'\\');
-        }
-      }
+      const text = extractDialogText(line);
       const msM = line.match(/,\s*(\d+)\s*\)\s*;?\s*$/);
       nodes[varName] = { text: text || '...', ms: msM ? parseInt(msM[1]) : 2000 };
       continue;
@@ -2733,10 +2869,10 @@ function parseLuaToBlocklyState(lua) {
 
     // ── add() choice wiring ───────────────────────────────────────────────────
     // VAR:add(TARGET, "label") or VAR:add(TARGET, dialogObject:format("label"...))
-    const addM = line.match(/^(\w+):add\s*\(\s*(\w+)\s*,\s*(?:dialogObject:format\s*\(\s*)?"((?:[^"\\]|\\.)*)"/);
+    const addM = line.match(/^(\w+):add\s*\(\s*(\w+)\s*,/);
     if (addM) {
-      const label = addM[3].replace(/\\n/g,'\n').replace(/\\"/g,'"').replace(/\\\\/g,'\\');
-      addCalls.push({ fromVar: addM[1], targetVar: addM[2], label });
+      const label = extractDialogText(line);
+      addCalls.push({ fromVar: addM[1], targetVar: addM[2], label: label || '...' });
       continue;
     }
   }
@@ -2759,7 +2895,7 @@ function parseLuaToBlocklyState(lua) {
 
   const rootChoices = choiceMap[rootVar] || [];
   if (rootChoices.length > 0) {
-    const chain = buildChoiceChain(rootChoices, nodes, hookOf, hookInsts, hookBodies, hookArgDefs, choiceMap);
+    const chain = buildChoiceChain(rootChoices, nodes, hookOf, hookInsts, hookBodies, hookArgDefs, choiceMap, new Set([rootVar]), constVals);
     if (chain) greetingBlock.inputs = { CHOICES: { block: chain } };
   }
 
@@ -2978,20 +3114,20 @@ function buildConditionBlockFromExpression(expr) {
 }
 
 // ── Build a linked chain of choice blocks ─────────────────────────────────────
-function buildChoiceChain(list, nodes, hookOf, hookInsts, hookBodies, hookArgDefs, choiceMap, visited) {
+function buildChoiceChain(list, nodes, hookOf, hookInsts, hookBodies, hookArgDefs, choiceMap, visited, constVals) {
   visited = visited || new Set();
   if (!list.length) return null;
   const [first, ...rest] = list;
-  const block = buildSingleChoice(first, nodes, hookOf, hookInsts, hookBodies, hookArgDefs, choiceMap, visited);
+  const block = buildSingleChoice(first, nodes, hookOf, hookInsts, hookBodies, hookArgDefs, choiceMap, visited, constVals);
   if (block && rest.length) {
-    const next = buildChoiceChain(rest, nodes, hookOf, hookInsts, hookBodies, hookArgDefs, choiceMap, visited);
+    const next = buildChoiceChain(rest, nodes, hookOf, hookInsts, hookBodies, hookArgDefs, choiceMap, visited, constVals);
     if (next) block.next = { block: next };
   }
   return block;
 }
 
 // ── Build one choice block ────────────────────────────────────────────────────
-function buildSingleChoice(choice, nodes, hookOf, hookInsts, hookBodies, hookArgDefs, choiceMap, visited) {
+function buildSingleChoice(choice, nodes, hookOf, hookInsts, hookBodies, hookArgDefs, choiceMap, visited, constVals) {
   visited = visited || new Set();
   const { targetVar, label } = choice;
 
@@ -3015,7 +3151,7 @@ function buildSingleChoice(choice, nodes, hookOf, hookInsts, hookBodies, hookArg
     const fn     = hookInst.funcName;
     const body   = hookBodies[fn] || '';
     const params = hookInst.params;
-    const action = buildActionBlock(fn, body, params, hookArgDefs[fn] || []);
+    const action = buildActionBlock(fn, body, params, hookArgDefs[fn] || [], constVals);
     const block  = { type: 'npc_choice', fields: { LABEL: stripBrackets(label) } };
     if (action) block.inputs = { ACTIONS: { block: action } };
     return block;
@@ -3024,7 +3160,7 @@ function buildSingleChoice(choice, nodes, hookOf, hookInsts, hookBodies, hookArg
   // Has sub-choices (sub-menu)
   if (subChoices.length > 0) {
     const block = { type: 'npc_choice', fields: { LABEL: stripBrackets(label) } };
-    const chain = buildChoiceChain(subChoices, nodes, hookOf, hookInsts, hookBodies, hookArgDefs, choiceMap, new Set(visited));
+    const chain = buildChoiceChain(subChoices, nodes, hookOf, hookInsts, hookBodies, hookArgDefs, choiceMap, new Set(visited), constVals);
     if (chain) block.inputs = { ACTIONS: { block: chain } };
     return block;
   }
@@ -3033,7 +3169,7 @@ function buildSingleChoice(choice, nodes, hookOf, hookInsts, hookBodies, hookArg
 }
 
 // ── Map hook body + bound params to a Blockly action block ───────────────────
-function buildActionBlock(funcName, body, boundParams, argDefs) {
+function buildActionBlock(funcName, body, boundParams, argDefs, constVals) {
   // Resolve bound parameter values into named args
   // argDefs = ['x','y','z'] from function signature (if any)
   // boundParams = ['8','9','9','true'] from hook instance
@@ -3054,7 +3190,8 @@ function buildActionBlock(funcName, body, boundParams, argDefs) {
           : (boundParams.length >= 3 ? parseInt(boundParams[2]) : 0);
 
   const firstNum = (s) => { const m = s.match(/-?\d+/); return m ? parseInt(m[0]) : 0; };
-  const price = body.match(/\((\d+)\)/) ? parseInt(body.match(/\((\d+)\)/)[1]) : 0;
+  const firstCallArg = (body.match(/\(\s*([A-Za-z_]\w*|-?\d+(?:\.\d+)?)\s*\)/) || [])[1] || '';
+  const price = resolveLuaNumeric(firstCallArg, body, constVals);
 
   // ── Crew ──────────────────────────────────────────────────────────────────
   if (/hireConverationPartner/.test(body) || funcName.includes('hireHook'))
@@ -3082,7 +3219,7 @@ function buildActionBlock(funcName, body, boundParams, argDefs) {
   for (const [fn, item] of itemMap) {
     if (body.includes(fn) || funcName.toLowerCase().includes(item)) {
       // Price from bound params or body
-      const p = boundParams.length ? parseInt(boundParams[0]) || 0 : price;
+      const p = boundParams.length ? (parseInt(boundParams[0]) || resolveLuaNumeric(boundParams[0], body, constVals)) : price;
       return { type: 'npc_sell_item', fields: { ITEM: item, PRICE: p } };
     }
   }
