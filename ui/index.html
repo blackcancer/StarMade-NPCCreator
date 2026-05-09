@@ -218,7 +218,7 @@
     </div>
 
     <div class="tab-content" id="tab-help">
-      <pre id="luaOutput" style="padding:16px;font-size:0.8rem;white-space:pre-wrap;color:#8b949e">
+      <pre id="helpOutput" style="padding:16px;font-size:0.8rem;white-space:pre-wrap;color:#8b949e">
 <span style="color:#58a6ff;font-weight:700">Block Reference</span>
 
 <span style="color:#e94560">📋 Dialog Structure</span>
@@ -226,6 +226,9 @@
   Greeting       — opening text shown to player
   Choice         — a button option the player can click
   Go Back        — adds a "back" button to previous menu
+
+<span style="color:#8e44ad">🧮 Variables</span>
+  Variable       — floating global Lua variable / constant
 
 <span style="color:#27ae60">👥 Crew Actions</span>
   Hire Crew      — player pays to hire this NPC
@@ -270,6 +273,9 @@
     <block type="npc_greeting"></block>
     <block type="npc_choice"></block>
     <block type="npc_goback"></block>
+  </category>
+  <category name="🧮 Variables" colour="#8e44ad">
+    <block type="npc_lua_var"></block>
   </category>
   <category name="👥 Crew" colour="#27ae60">
     <block type="npc_hire"></block>
@@ -345,6 +351,30 @@ Blockly.Blocks['npc_script'] = {
     this.setColour('#4a90d9');
     this.setTooltip('Root container for the NPC dialog script.');
     this.setDeletable(false);
+  }
+};
+
+// ── npc_lua_var ─────────────────────────────────────────────────────────────
+Blockly.Blocks['npc_lua_var'] = {
+  init() {
+    this.appendDummyInput()
+      .appendField('🧮 Variable')
+      .appendField(new Blockly.FieldTextInput('priceLaser'), 'NAME')
+      .appendField('type')
+      .appendField(new Blockly.FieldDropdown([
+        ['number', 'number'],
+        ['text', 'text'],
+        ['raw Lua', 'raw'],
+      ]), 'MODE');
+    this.appendDummyInput()
+      .appendField('value')
+      .appendField(new Blockly.FieldTextInput('100000'), 'VALUE');
+    this.setColour('#8e44ad');
+    this.setTooltip(
+      'VARIABLE\nStandalone global Lua variable emitted before hooks and create().\n\n' +
+      'Use it for reusable prices, names, flags, or raw Lua expressions.\n' +
+      'This block has no connectors on purpose: it can stay floating anywhere in the workspace.'
+    );
   }
 };
 
@@ -1400,6 +1430,7 @@ let _state = {
   rootVar: 'entry',
   dbTables: new Map(),   // table → { db, cols }
   dbPathUsed: null,
+  luaVars: [],           // { name, mode, value }
 };
 
 function nextVar(prefix = 'entry') {
@@ -1436,6 +1467,29 @@ function makeNode(text, ms = 2000) {
   const vn = nextVar();
   _state.nodes.push({ varName: vn, text, ms, hook: null, reactions: [], choices: [] });
   return vn;
+}
+
+function enrichSerializedBlock(block, data) {
+  if (data && Object.keys(data).length > 0) block.data = JSON.stringify(data);
+  return block;
+}
+
+function readBlockData(block) {
+  if (!block || !block.data) return {};
+  try { return JSON.parse(block.data) || {}; }
+  catch (_) { return {}; }
+}
+
+function reactionText(meta, code, fallback) {
+  const reactions = Array.isArray(meta?.reactions) ? meta.reactions : [];
+  const hit = reactions.find(r => Number(r.code) === Number(code));
+  return hit?.text || fallback;
+}
+
+function luaVarLiteral(mode, value) {
+  if (mode === 'text') return luaStringLiteral(value || '');
+  if (mode === 'number') return String(Number(value) || 0);
+  return String(value || 'nil');
 }
 
 function getNode(vn) {
@@ -1595,7 +1649,7 @@ function luaStringLiteral(s) {
   return `"${String(s ?? '').replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
 }
 
-function makeSellAction(item, price, parentVarName) {
+function makeSellAction(item, price, parentVarName, meta = {}) {
   const hookFn = `give_${item}_${price}_Hook`;
   const methodMap = {
     laser: 'giveLaserWeapon', sniper: 'giveSniperRifle',
@@ -1607,10 +1661,10 @@ function makeSellAction(item, price, parentVarName) {
   };
   registerHook(hookFn, [`return dialogObject:${methodMap[item]}(${price});`]);
 
-  const waitVn   = makeNode('Please wait...');
-  const successVn = makeNode('Thank you!');
-  const failVn   = makeNode("You don't have enough money!");
-  const fail2Vn  = makeNode("Sorry, your inventory is full!");
+  const waitVn    = makeNode(meta.waitText || 'Please wait...');
+  const successVn = makeNode(reactionText(meta, 0, 'Thank you!'));
+  const failVn    = makeNode(reactionText(meta, -1, "You don't have enough money!"));
+  const fail2Vn   = makeNode(reactionText(meta, -2, 'Sorry, your inventory is full!'));
 
   const waitNode = getNode(waitVn);
   waitNode.hook = hookFn;
@@ -1622,14 +1676,14 @@ function makeSellAction(item, price, parentVarName) {
   return waitVn;
 }
 
-function makeHireAction(price, successText) {
+function makeHireAction(price, successText, meta = {}) {
   const hookFn = `hireHookFunc_${price}`;
   registerHook(hookFn, [`return dialogObject:hireConverationPartner();`]);
-  const waitVn    = makeNode('Please wait...');
-  const successVn = makeNode(successText || "I'm honoured!");
-  const fail1Vn   = makeNode("You don't have enough money!");
-  const fail2Vn   = makeNode("You can't have more crew!");
-  const fail3Vn   = makeNode("I won't follow you.");
+  const waitVn    = makeNode(meta.waitText || 'Please wait...');
+  const successVn = makeNode(successText || reactionText(meta, 0, "I'm honoured!"));
+  const fail1Vn   = makeNode(reactionText(meta, -1, "You don't have enough money!"));
+  const fail2Vn   = makeNode(reactionText(meta, -2, "You can't have more crew!"));
+  const fail3Vn   = makeNode(reactionText(meta, -3, "I won't follow you."));
   const waitNode  = getNode(waitVn);
   waitNode.hook = hookFn;
   waitNode.reactions = [
@@ -1641,12 +1695,12 @@ function makeHireAction(price, successText) {
   return waitVn;
 }
 
-function makeUnhireAction(successText) {
+function makeUnhireAction(successText, meta = {}) {
   const hookFn = 'unhireHookFunc';
   registerHook(hookFn, [`return dialogObject:unhireConverationPartner();`]);
-  const waitVn    = makeNode('Please wait...');
-  const successVn = makeNode(successText || 'Yes, commander!');
-  const failVn    = makeNode('No, commander!');
+  const waitVn    = makeNode(meta.waitText || 'Please wait...');
+  const successVn = makeNode(successText || reactionText(meta, 0, 'Yes, commander!'));
+  const failVn    = makeNode(reactionText(meta, -1, 'No, commander!'));
   const waitNode  = getNode(waitVn);
   waitNode.hook = hookFn;
   waitNode.reactions = [
@@ -1676,31 +1730,50 @@ function processChoices(block, inputName, parentVarName) {
 
 // Process actions inside a choice block — return the primary action node var name
 function processActions(block, inputName, parentVarName) {
-  let child = block.getInputTargetBlock(inputName);
+  const child = block.getInputTargetBlock(inputName);
   if (!child) return null;
+
+  if (child.type === 'npc_choice' || child.type === 'npc_goback') {
+    const meta = readBlockData(block);
+    const nodeText = meta.nodeText || block.getFieldValue('LABEL') || '...';
+    const nodeMs = Number(meta.nodeMs) || 2000;
+    const vn = makeNode(nodeText, nodeMs);
+    const node = getNode(vn);
+    const choices = processChoices(block, inputName, parentVarName);
+    for (const c of choices) {
+      if (c.targetVarName && c.targetVarName.startsWith('__BACK__')) {
+        node.choices.push({ label: c.label, targetVarName: parentVarName });
+      } else {
+        node.choices.push({ label: c.label, targetVarName: c.targetVarName });
+      }
+    }
+    return vn;
+  }
+
   return processActionBlock(child, parentVarName);
 }
 
 function processActionBlock(block, parentVarName) {
   if (!block) return null;
+  const meta = readBlockData(block);
   switch (block.type) {
     case 'npc_hire': {
       const price   = block.getFieldValue('PRICE');
       const success = block.getFieldValue('SUCCESS');
-      return makeHireAction(price, success);
+      return makeHireAction(price, success, meta);
     }
     case 'npc_unhire': {
       const success = block.getFieldValue('SUCCESS');
-      return makeUnhireAction(success);
+      return makeUnhireAction(success, meta);
     }
     case 'npc_spawn_crew': {
       const price  = block.getFieldValue('PRICE');
       const hookFn = `spawnCrewHook_${price}`;
       registerHook(hookFn, [`return dialogObject:spawnCrew(${price});`]);
-      const waitVn = makeNode('Please wait...');
-      const successVn = makeNode('Welcome!');
-      const failVn = makeNode("You don't have enough money!");
-      const fail2Vn = makeNode("You can't have more crew!");
+      const waitVn = makeNode(meta.waitText || 'Please wait...');
+      const successVn = makeNode(reactionText(meta, 0, 'Welcome!'));
+      const failVn = makeNode(reactionText(meta, -1, "You don't have enough money!"));
+      const fail2Vn = makeNode(reactionText(meta, -2, "You can't have more crew!"));
       const waitNode = getNode(waitVn);
       waitNode.hook = hookFn;
       waitNode.reactions = [{ code: 0, target: successVn }, { code: -1, target: failVn }, { code: -2, target: fail2Vn }];
@@ -1709,17 +1782,17 @@ function processActionBlock(block, parentVarName) {
     case 'npc_sell_item': {
       const item  = block.getFieldValue('ITEM');
       const price = block.getFieldValue('PRICE');
-      return makeSellAction(item, price, parentVarName);
+      return makeSellAction(item, price, parentVarName, meta);
     }
     case 'npc_give_type': {
       const typeId = block.getFieldValue('TYPE_ID');
       const count  = block.getFieldValue('COUNT');
       const hookFn = `giveTypeHook_${typeId}_${count}`;
       registerHook(hookFn, [`return dialogObject:giveType(${typeId}, ${count});`]);
-      const waitVn = makeNode('Please wait...');
-      const successVn = makeNode('Here you go!');
-      const failVn = makeNode("You don't have enough money!");
-      const fail2Vn = makeNode("Your inventory is full!");
+      const waitVn = makeNode(meta.waitText || 'Please wait...');
+      const successVn = makeNode(reactionText(meta, 0, 'Here you go!'));
+      const failVn = makeNode(reactionText(meta, -1, "You don't have enough money!"));
+      const fail2Vn = makeNode(reactionText(meta, -2, 'Your inventory is full!'));
       const waitNode = getNode(waitVn);
       waitNode.hook = hookFn;
       waitNode.reactions = [{ code: 0, target: successVn }, { code: -1, target: failVn }, { code: -2, target: fail2Vn }];
@@ -2062,9 +2135,9 @@ function processActionBlock(block, parentVarName) {
       const success = block.getFieldValue('SUCCESS');
       const fail    = block.getFieldValue('FAIL');
       registerHook(name, [body]);
-      const waitVn = makeNode('Please wait...');
-      const successVn = makeNode(success);
-      const failVn = makeNode(fail);
+      const waitVn = makeNode(meta.waitText || 'Please wait...');
+      const successVn = makeNode(reactionText(meta, 0, success));
+      const failVn = makeNode(reactionText(meta, -1, fail));
       const waitNode = getNode(waitVn);
       waitNode.hook = name;
       waitNode.reactions = [{ code: 0, target: successVn }, { code: -1, target: failVn }];
@@ -2109,13 +2182,23 @@ function generateLua(scriptName) {
     rootVar: 'entry',
     dbTables: new Map(),
     dbPath: null,
+    luaVars: [],
   };
 
   // Find root block
   const allBlocks = workspace.getAllBlocks(false);
 
-  // Collect SQLite tables
+  // Collect standalone globals / helpers
   for (const b of allBlocks) {
+    if (b.type === 'npc_lua_var') {
+      const name = String(b.getFieldValue('NAME') || '').trim();
+      if (!name) continue;
+      _state.luaVars.push({
+        name,
+        mode: b.getFieldValue('MODE') || 'raw',
+        value: b.getFieldValue('VALUE') || '',
+      });
+    }
     if (b.type === 'npc_sqlite_table') {
       const tbl = b.getFieldValue('TABLE');
       const db  = b.getFieldValue('DB');
@@ -2156,6 +2239,14 @@ function generateLua(scriptName) {
   lines.push(`  Generated by StarMade NPC Creator`);
   lines.push(`--]]`);
   lines.push(``);
+
+  if (_state.luaVars.length > 0) {
+    lines.push(`-- User variables`);
+    for (const v of _state.luaVars) {
+      lines.push(`${v.name} = ${luaVarLiteral(v.mode, v.value)};`);
+    }
+    lines.push(``);
+  }
 
   // SQLite init
   if (_state.dbTables.size > 0 && _state.dbPath) {
@@ -2678,6 +2769,7 @@ function parseLuaToBlocklyState(lua) {
   const fnBodies    = {};  // any pre-create function body
   const fnArgDefs   = {};  // any pre-create function arg names
   const constVals   = {};  // priceLaser → 100000
+  const globalVars  = [];  // standalone global vars before create()
 
   const createIdx    = lua.search(/\r?\nfunction create\s*\(/);
   const beforeCreate = createIdx >= 0 ? lua.slice(0, createIdx) : lua;
@@ -2705,17 +2797,37 @@ function parseLuaToBlocklyState(lua) {
     constVals[cm[1]] = val;
   }
 
+  const beforeCreateNoFns = beforeCreate.replace(anyFnRe, '');
+  const globalVarRe = /^\s*(\w+)\s*=\s*(-?\d+(?:\.\d+)?|"(?:[^"\\]|\\.)*")\s*;?\s*$/gm;
+  let gv;
+  while ((gv = globalVarRe.exec(beforeCreateNoFns)) !== null) {
+    const rawVal = gv[2];
+    globalVars.push({
+      type: 'npc_lua_var',
+      x: 30 + (globalVars.length * 24),
+      y: 30 + (globalVars.length * 24),
+      fields: {
+        NAME: gv[1],
+        MODE: /^"/.test(rawVal) ? 'text' : 'number',
+        VALUE: /^"/.test(rawVal)
+          ? rawVal.slice(1, -1).replace(/\\n/g, '\n').replace(/\\"/g, '"').replace(/\\\\/g, '\\')
+          : String(Number(rawVal)),
+      }
+    });
+  }
+
   // ── Step 2: Extract create() body ─────────────────────────────────────────
   const createMatch = lua.match(/function create\s*\(dialogObject,\s*bindings\)\r?\n([\s\S]+?)^end/m);
   if (!createMatch) throw new Error('No create() function found.');
   const createBody = createMatch[1];
 
   // ── Step 3: Parse all declarations and wiring calls ───────────────────────
-  const nodes     = {};   // varName → { text, ms }
-  const hookInsts = {};   // hookVarName → { funcName, params[] }
-  const hookOf    = {};   // nodeVarName → hookVarName (from setHook)
-  const addCalls  = [];   // { fromVar, targetVar, label }
-  let   rootVar   = null;
+  const nodes       = {}; // varName → { text, ms }
+  const hookInsts   = {}; // hookVarName → { funcName, params[] }
+  const hookOf      = {}; // nodeVarName → hookVarName (from setHook)
+  const reactionMap = {}; // nodeVarName → [{ hookVar, code, targetVar }]
+  const addCalls    = []; // { fromVar, targetVar, label }
+  let   rootVar     = null;
 
   function splitLuaArgs(argText) {
     const out = [];
@@ -2867,6 +2979,13 @@ function parseLuaToBlocklyState(lua) {
     const hookM = line.match(/^(\w+):setHook\s*\(\s*(\w+)\s*\)/);
     if (hookM) { hookOf[hookM[1]] = hookM[2]; continue; }
 
+    const reactM = line.match(/^(\w+):addReaction\s*\(\s*(\w+)\s*,\s*(-?\d+)\s*,\s*(\w+)\s*\)/);
+    if (reactM) {
+      if (!reactionMap[reactM[1]]) reactionMap[reactM[1]] = [];
+      reactionMap[reactM[1]].push({ hookVar: reactM[2], code: Number(reactM[3]), targetVar: reactM[4] });
+      continue;
+    }
+
     // ── add() choice wiring ───────────────────────────────────────────────────
     // VAR:add(TARGET, "label") or VAR:add(TARGET, dialogObject:format("label"...))
     const addM = line.match(/^(\w+):add\s*\(\s*(\w+)\s*,/);
@@ -2895,11 +3014,11 @@ function parseLuaToBlocklyState(lua) {
 
   const rootChoices = choiceMap[rootVar] || [];
   if (rootChoices.length > 0) {
-    const chain = buildChoiceChain(rootChoices, nodes, hookOf, hookInsts, hookBodies, hookArgDefs, choiceMap, new Set([rootVar]), constVals);
+    const chain = buildChoiceChain(rootChoices, nodes, hookOf, hookInsts, hookBodies, hookArgDefs, choiceMap, reactionMap, new Set([rootVar]), constVals);
     if (chain) greetingBlock.inputs = { CHOICES: { block: chain } };
   }
 
-  return { blocks: { languageVersion: 0, blocks: [greetingBlock] } };
+  return { blocks: { languageVersion: 0, blocks: [...globalVars, greetingBlock] } };
 }
 
 // ── Count unbalanced open parens (for continuation detection) ────────────────
@@ -3114,20 +3233,20 @@ function buildConditionBlockFromExpression(expr) {
 }
 
 // ── Build a linked chain of choice blocks ─────────────────────────────────────
-function buildChoiceChain(list, nodes, hookOf, hookInsts, hookBodies, hookArgDefs, choiceMap, visited, constVals) {
+function buildChoiceChain(list, nodes, hookOf, hookInsts, hookBodies, hookArgDefs, choiceMap, reactionMap, visited, constVals) {
   visited = visited || new Set();
   if (!list.length) return null;
   const [first, ...rest] = list;
-  const block = buildSingleChoice(first, nodes, hookOf, hookInsts, hookBodies, hookArgDefs, choiceMap, visited, constVals);
+  const block = buildSingleChoice(first, nodes, hookOf, hookInsts, hookBodies, hookArgDefs, choiceMap, reactionMap, visited, constVals);
   if (block && rest.length) {
-    const next = buildChoiceChain(rest, nodes, hookOf, hookInsts, hookBodies, hookArgDefs, choiceMap, visited, constVals);
+    const next = buildChoiceChain(rest, nodes, hookOf, hookInsts, hookBodies, hookArgDefs, choiceMap, reactionMap, visited, constVals);
     if (next) block.next = { block: next };
   }
   return block;
 }
 
 // ── Build one choice block ────────────────────────────────────────────────────
-function buildSingleChoice(choice, nodes, hookOf, hookInsts, hookBodies, hookArgDefs, choiceMap, visited, constVals) {
+function buildSingleChoice(choice, nodes, hookOf, hookInsts, hookBodies, hookArgDefs, choiceMap, reactionMap, visited, constVals) {
   visited = visited || new Set();
   const { targetVar, label } = choice;
 
@@ -3139,7 +3258,7 @@ function buildSingleChoice(choice, nodes, hookOf, hookInsts, hookBodies, hookArg
 
   const hookVarName = hookOf[targetVar];
   const hookInst    = hookVarName ? hookInsts[hookVarName] : null;
-  const subChoices  = (choiceMap[targetVar] || []).filter(c => !visited.has(c.targetVar));
+  const subChoices  = choiceMap[targetVar] || [];
 
   // Terminal (no hook, no sub-choices) → GoBack
   if (!hookVarName && !hookInst && subChoices.length === 0) {
@@ -3151,25 +3270,25 @@ function buildSingleChoice(choice, nodes, hookOf, hookInsts, hookBodies, hookArg
     const fn     = hookInst.funcName;
     const body   = hookBodies[fn] || '';
     const params = hookInst.params;
-    const action = buildActionBlock(fn, body, params, hookArgDefs[fn] || [], constVals);
+    const action = buildActionBlock(fn, body, params, hookArgDefs[fn] || [], constVals, reactionMap[targetVar] || [], nodes, targetVar);
     const block  = { type: 'npc_choice', fields: { LABEL: stripBrackets(label) } };
     if (action) block.inputs = { ACTIONS: { block: action } };
-    return block;
+    return enrichSerializedBlock(block, { nodeText: nodes[targetVar]?.text || label, nodeMs: nodes[targetVar]?.ms || 2000 });
   }
 
   // Has sub-choices (sub-menu)
   if (subChoices.length > 0) {
     const block = { type: 'npc_choice', fields: { LABEL: stripBrackets(label) } };
-    const chain = buildChoiceChain(subChoices, nodes, hookOf, hookInsts, hookBodies, hookArgDefs, choiceMap, new Set(visited), constVals);
+    const chain = buildChoiceChain(subChoices, nodes, hookOf, hookInsts, hookBodies, hookArgDefs, choiceMap, reactionMap, new Set(visited), constVals);
     if (chain) block.inputs = { ACTIONS: { block: chain } };
-    return block;
+    return enrichSerializedBlock(block, { nodeText: nodes[targetVar]?.text || label, nodeMs: nodes[targetVar]?.ms || 2000 });
   }
 
   return { type: 'npc_choice', fields: { LABEL: stripBrackets(label) } };
 }
 
 // ── Map hook body + bound params to a Blockly action block ───────────────────
-function buildActionBlock(funcName, body, boundParams, argDefs, constVals) {
+function buildActionBlock(funcName, body, boundParams, argDefs, constVals, reactions, nodes, targetVar) {
   // Resolve bound parameter values into named args
   // argDefs = ['x','y','z'] from function signature (if any)
   // boundParams = ['8','9','9','true'] from hook instance
@@ -3192,14 +3311,22 @@ function buildActionBlock(funcName, body, boundParams, argDefs, constVals) {
   const firstNum = (s) => { const m = s.match(/-?\d+/); return m ? parseInt(m[0]) : 0; };
   const firstCallArg = (body.match(/\(\s*([A-Za-z_]\w*|-?\d+(?:\.\d+)?)\s*\)/) || [])[1] || '';
   const price = resolveLuaNumeric(firstCallArg, body, constVals);
+  const reactionMeta = {
+    waitText: nodes?.[targetVar]?.text || undefined,
+    reactions: (reactions || []).map(r => ({
+      code: r.code,
+      text: stripBrackets(nodes?.[r.targetVar]?.text || ''),
+      targetVar: r.targetVar,
+    })),
+  };
 
   // ── Crew ──────────────────────────────────────────────────────────────────
   if (/hireConverationPartner/.test(body) || funcName.includes('hireHook'))
-    return { type: 'npc_hire', fields: { PRICE: price, SUCCESS: "I'm honoured to work with you, commander!" } };
+    return enrichSerializedBlock({ type: 'npc_hire', fields: { PRICE: price, SUCCESS: reactionText(reactionMeta, 0, "I'm honoured to work with you, commander!") } }, reactionMeta);
   if (/unhireConverationPartner/.test(body) || funcName.includes('unhireHook'))
-    return { type: 'npc_unhire', fields: { SUCCESS: 'Yes, commander!' } };
+    return enrichSerializedBlock({ type: 'npc_unhire', fields: { SUCCESS: reactionText(reactionMeta, 0, 'Yes, commander!') } }, reactionMeta);
   if (/spawnCrew/.test(body))
-    return { type: 'npc_spawn_crew', fields: { PRICE: price } };
+    return enrichSerializedBlock({ type: 'npc_spawn_crew', fields: { PRICE: price } }, reactionMeta);
 
   // ── Items (order: longest method name first) ──────────────────────────────
   const itemMap = [
@@ -3220,7 +3347,7 @@ function buildActionBlock(funcName, body, boundParams, argDefs, constVals) {
     if (body.includes(fn) || funcName.toLowerCase().includes(item)) {
       // Price from bound params or body
       const p = boundParams.length ? (parseInt(boundParams[0]) || resolveLuaNumeric(boundParams[0], body, constVals)) : price;
-      return { type: 'npc_sell_item', fields: { ITEM: item, PRICE: p } };
+      return enrichSerializedBlock({ type: 'npc_sell_item', fields: { ITEM: item, PRICE: p } }, reactionMeta);
     }
   }
 
@@ -3230,7 +3357,7 @@ function buildActionBlock(funcName, body, boundParams, argDefs, constVals) {
                  : (body.match(/giveType\s*\((\d+)/) ? parseInt(body.match(/giveType\s*\((\d+)/)[1]) : 0);
     const count  = boundParams[1] !== undefined ? parseInt(boundParams[1])
                  : (body.match(/giveType\s*\(\d+\s*,\s*(\d+)/) ? parseInt(body.match(/giveType\s*\(\d+\s*,\s*(\d+)/)[1]) : 1);
-    return { type: 'npc_give_type', fields: { TYPE_ID: typeId, COUNT: count, FREE: 'TRUE' } };
+    return enrichSerializedBlock({ type: 'npc_give_type', fields: { TYPE_ID: typeId, COUNT: count, FREE: 'TRUE' } }, reactionMeta);
   }
 
   // ── World actions ─────────────────────────────────────────────────────────
@@ -3251,29 +3378,29 @@ function buildActionBlock(funcName, body, boundParams, argDefs, constVals) {
   if (/callTutorial/.test(body) || funcName.includes('Tutorial')) {
     const tutName = (boundParams[0] || '').replace(/"/g, '') ||
                     (body.match(/"([^"]+)"/) ? body.match(/"([^"]+)"/)[1] : 'tutorial');
-    return {
+    return enrichSerializedBlock({
       type: 'npc_call_tutorial',
       fields: { NAME: tutName }
-    };
+    }, reactionMeta);
   }
 
   // ── destroyShip ──────────────────────────────────────────────────────────
   if (/destroyShip/.test(body) || funcName.toLowerCase().includes('destroyship') || funcName.toLowerCase().includes('destroyship')) {
     const uid = (boundParams[0] || '').replace(/"/g,'') ||
                 (body.match(/"([^"]+)"/) ? body.match(/"([^"]+)"/)[1] : 'ENTITY_SHIP_target');
-    return {
+    return enrichSerializedBlock({
       type: 'npc_destroy_ship',
       fields: { UID: uid }
-    };
+    }, reactionMeta);
   }
 
   // ── giveGravity ───────────────────────────────────────────────────────────
   if (/giveGravity/.test(body) || funcName.includes('Gravity') || funcName.includes('Grav')) {
     const gravVal = boundParams[0] === 'false' ? 'false' : 'true';
-    return {
+    return enrichSerializedBlock({
       type: 'npc_give_gravity',
       fields: { STATE: gravVal }
-    };
+    }, reactionMeta);
   }
 
   // ── SQLite / memory actions ───────────────────────────────────────────────
@@ -3282,30 +3409,30 @@ function buildActionBlock(funcName, body, boundParams, argDefs, constVals) {
     let mode = 'raw', value = m2[2].trim();
     if (/^".*"$/.test(value)) { mode = 'text'; value = value.slice(1, -1).replace(/\\"/g, '"'); }
     else if (/^-?\d+(?:\.\d+)?$/.test(value)) { mode = 'number'; }
-    return { type: 'npc_memory_set', fields: { KEY: m2[1], MODE: mode, VALUE: value } };
+    return enrichSerializedBlock({ type: 'npc_memory_set', fields: { KEY: m2[1], MODE: mode, VALUE: value } }, reactionMeta);
   }
   m2 = body.match(/_memIncrement\(player,\s*"([^"]+)",\s*(-?\d+(?:\.\d+)?)\)/);
   if (m2) {
-    return { type: 'npc_memory_increment', fields: { KEY: m2[1], AMOUNT: Number(m2[2]) } };
+    return enrichSerializedBlock({ type: 'npc_memory_increment', fields: { KEY: m2[1], AMOUNT: Number(m2[2]) } }, reactionMeta);
   }
 
   // ── Conditions ────────────────────────────────────────────────────────────
   const ifExprM = body.match(/--\s*NPCC_IF_CONDITION[\s\S]*?local\s+_cond\s*=\s*([\s\S]*?)\n\s*if\s+_cond\s+then\s+return\s+0\s+end/);
   if (ifExprM) {
-    return {
+    return enrichSerializedBlock({
       type: 'npc_if_condition',
-      fields: { SUCCESS: 'Condition met.', FAIL: 'Condition failed.' },
+      fields: { SUCCESS: reactionText(reactionMeta, 0, 'Condition met.'), FAIL: reactionText(reactionMeta, -1, 'Condition failed.') },
       inputs: { COND: { block: buildConditionBlockFromExpression(ifExprM[1].trim()) } }
-    };
+    }, reactionMeta);
   }
 
   const waitExprM = body.match(/--\s*NPCC_WAIT_UNTIL[\s\S]*?local\s+_cond\s*=\s*([\s\S]*?)\n\s*if\s+_cond\s+then\s+return\s+0\s+end/);
   if (waitExprM) {
-    return {
+    return enrichSerializedBlock({
       type: 'npc_wait_until',
-      fields: { WAIT: 'Waiting...', SUCCESS: 'Done!' },
+      fields: { WAIT: reactionMeta.waitText || 'Waiting...', SUCCESS: reactionText(reactionMeta, 0, 'Done!') },
       inputs: { COND: { block: buildConditionBlockFromExpression(waitExprM[1].trim()) } }
-    };
+    }, reactionMeta);
   }
 
   const creditM = body.match(/local\s+credits\s*=\s*ps:getCredits\(\)[\s\S]*?if\s+credits\s*>=\s*(-?\d+(?:\.\d+)?)\s+then\s+return\s+0\s+end/);
@@ -3383,10 +3510,15 @@ function buildActionBlock(funcName, body, boundParams, argDefs, constVals) {
 
   // ── Catch-all: Custom Hook ─────────────────────────────────────────────────
   const bodyOneLine = (body || '').replace(/\n/g, '; ').trim() || `return 0; -- ${funcName}`;
-  return {
+  return enrichSerializedBlock({
     type: 'npc_custom_hook',
-    fields: { NAME: funcName, BODY: bodyOneLine, SUCCESS: 'Done!', FAIL: 'Something went wrong.' }
-  };
+    fields: {
+      NAME: funcName,
+      BODY: bodyOneLine,
+      SUCCESS: reactionText(reactionMeta, 0, 'Done!'),
+      FAIL: reactionText(reactionMeta, -1, 'Something went wrong.')
+    }
+  }, reactionMeta);
 }
 
 
