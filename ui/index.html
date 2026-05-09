@@ -1233,14 +1233,14 @@ Blockly.Blocks['npc_get_world'] = {
       .appendField('🌍 Show world state key')
       .appendField(new Blockly.FieldTextInput('guild_event_name'), 'KEY')
       .appendField('default')
-      .appendField(new Blockly.FieldTextInput('none'), 'DEFAULT';
+      .appendField(new Blockly.FieldTextInput('none'), 'DEFAULT');
     this.appendDummyInput()
-      .appendField('Texte (%s = valeur)')
+      .appendField('Text (%s = value)')
       .appendField(new Blockly.FieldTextInput('Current event: %s'), 'TEXT');
     this.setPreviousStatement(true, null);
     this.setNextStatement(true, null);
     this.setColour('#7f8c8d');
-    this.setTooltip('GET WORLD STATE\nAffiche la valeur d\'un état global dans le dialog.');
+    this.setTooltip('GET WORLD STATE\nShows a global world state value in the dialog.');
   }
 };
 
