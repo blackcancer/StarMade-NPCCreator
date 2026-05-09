@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>StarMade NPC Creator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/blockly@10.4.3/blockly.min.js"></script>
+</head>
+<body>
+
+<!-- ── Header ──────────────────────────────────────────────────────────────── -->
+<header>
+  <div class="brand">
+    <div class="brand-title">
+      <h1>⚙ StarMade NPC Creator</h1>
+      <div class="subtitle">Visual Lua dialog builder</div>
+    </div>
+  </div>
+
+  <div class="hdivider"></div>
+
+  <div class="script-name-wrap">
+    <label for="scriptName">Script</label>
+    <input id="scriptName" type="text" value="my-npc" placeholder="my-npc" autocomplete="off" spellcheck="false" />
+  </div>
+
+  <div class="hdivider"></div>
+
+  <select id="exampleSelect" title="Load an example">
+    <optgroup label="── Basic">
+      <option value="welcome_kiosk">📋 Welcome Kiosk</option>
+      <option value="toll_booth">🚧 Toll Booth</option>
+    </optgroup>
+    <optgroup label="── Intermediate">
+      <option value="crew_recruiter">👥 Crew Recruiter</option>
+    </optgroup>
+    <optgroup label="── Advanced">
+      <option value="delivery_quest">📜 Delivery Quest</option>
+      <option value="reputation_shop">⭐ Reputation Shop</option>
+    </optgroup>
+    <optgroup label="── Very Advanced">
+      <option value="guild_faction_hub">🏛 Guild Faction Hub</option>
+    </optgroup>
+  </select>
+  <button class="btn btn-secondary" onclick="loadExample(document.getElementById('exampleSelect').value)">Load example</button>
+
+  <div class="hdivider"></div>
+
+  <button class="btn btn-secondary" onclick="importWorkspace()">📥 Import</button>
+  <button class="btn btn-secondary" onclick="exportWorkspace()">📤 Export</button>
+  <button class="btn btn-secondary" onclick="clearWorkspace()">🗑 Clear</button>
+
+  <div class="spacer"></div>
+
+  <button class="btn btn-success" onclick="copyLua()">📋 Copy Lua</button>
+  <button class="btn btn-success" onclick="downloadLua()">⬇ Download</button>
+
+  <input type="file" id="fileInput" accept=".json,.lua" style="display:none" onchange="onFileLoad(event)" />
+</header>
+
+<!-- ── Main ────────────────────────────────────────────────────────────────── -->
+<div class="main">
+  <div id="blocklyDiv"></div>
+
+  <div class="output-panel">
+    <div class="output-tabs">
+      <div class="tab active" onclick="showTab('lua')">Lua Output</div>
+      <div class="tab"       onclick="showTab('help')">Help</div>
+    </div>
+
+    <div class="tab-content active" id="tab-lua">
+      <pre id="luaOutput">-- Drag blocks from the toolbox to build your NPC dialog.</pre>
+    </div>
+
+    <div class="tab-content" id="tab-help">
+      <div id="helpOutput" class="help-doc"></div>
+    </div>
+
+    <div id="statusBar">Ready — drag blocks from the toolbox.</div>
+  </div>
+</div>
+
+<div id="copyBadge">✓ Copied!</div>
+<!-- Toolbox is provided by ui/src/toolbox.js -->
+
+
+<!-- BUNDLE -->
+
+</body>
+</html>

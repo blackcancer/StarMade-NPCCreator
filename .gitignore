@@ -2,3 +2,5 @@ node_modules/
 dist/
 coverage/
 *.js.map
+.DS_Store
+*.log

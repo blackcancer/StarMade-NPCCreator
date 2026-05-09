@@ -1,0 +1,508 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   StarMade NPC Creator — Design System
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Design tokens ──────────────────────────────────────────────────────────── */
+:root {
+  --bg-base:       #0e1117;
+  --bg-surface:    #141921;
+  --bg-raised:     #1c2433;
+  --bg-hover:      #243044;
+  --bg-active:     #2d3d56;
+
+  --border-subtle: #1f2d40;
+  --border-muted:  #2a3d55;
+  --border-focus:  #4a9eff;
+
+  --text-primary:  #e2e8f0;
+  --text-secondary:#8a9bb5;
+  --text-muted:    #4a5a72;
+  --text-code:     #cdd5e0;
+
+  --accent:        #3b9eff;
+  --accent-bright: #60b8ff;
+  --accent-glow:   rgba(59,158,255,0.15);
+
+  --success:       #34d399;
+  --success-bg:    #0d3a28;
+
+  --lua-kw:        #c792ea;
+  --lua-str:       #a8e6a3;
+  --lua-cmt:       #4a5a72;
+  --lua-num:       #ffcb6b;
+
+  --font-ui:   'Inter', 'Segoe UI', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+
+  --radius-md: 7px;
+  --t-fast:    120ms ease;
+}
+
+/* ── Reset ───────────────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--font-ui);
+  background: var(--bg-base);
+  color: var(--text-primary);
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Header ──────────────────────────────────────────────────────────────────── */
+header {
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-subtle);
+  padding: 0 14px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  z-index: 10;
+}
+
+/* Brand — title + subtitle stacked */
+.brand { display: flex; align-items: center; flex-shrink: 0; }
+.brand-title { display: flex; flex-direction: column; gap: 1px; }
+
+.brand h1 {
+  font-size: 0.88rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--text-primary);
+  white-space: nowrap;
+  line-height: 1.1;
+}
+.brand h1 span { color: var(--accent-bright); }
+
+.subtitle {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  line-height: 1.1;
+}
+
+.hdivider {
+  width: 1px;
+  height: 18px;
+  background: var(--border-muted);
+  flex-shrink: 0;
+  margin: 0 3px;
+}
+
+.spacer { flex: 1; }
+
+/* Script name */
+.script-name-wrap { display: flex; align-items: center; gap: 5px; }
+.script-name-wrap label {
+  font-size: 0.66rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+#scriptName {
+  background: var(--bg-raised);
+  border: 1px solid var(--border-muted);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  padding: 4px 9px;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  width: 140px;
+  outline: none;
+  transition: border-color var(--t-fast), box-shadow var(--t-fast);
+}
+#scriptName:focus {
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+/* Example selector */
+#exampleSelect {
+  background: var(--bg-raised);
+  border: 1px solid var(--border-muted);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  padding: 4px 7px;
+  font-size: 0.76rem;
+  cursor: pointer;
+  outline: none;
+  max-width: 160px;
+  transition: border-color var(--t-fast);
+}
+#exampleSelect:hover, #exampleSelect:focus {
+  border-color: var(--border-focus);
+}
+
+/* ── Buttons ─────────────────────────────────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 11px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  font-family: var(--font-ui);
+  font-size: 0.76rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background var(--t-fast), border-color var(--t-fast), color var(--t-fast);
+  white-space: nowrap;
+  outline: none;
+}
+
+.btn-secondary {
+  background: transparent;
+  border-color: var(--border-muted);
+  color: var(--text-secondary);
+}
+.btn-secondary:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-focus);
+  color: var(--text-primary);
+}
+
+.btn-success {
+  background: var(--success-bg);
+  border-color: var(--success);
+  color: var(--success);
+  font-weight: 600;
+}
+.btn-success:hover {
+  background: var(--success);
+  color: #071f15;
+}
+
+/* ── Layout ──────────────────────────────────────────────────────────────────── */
+.main { display: flex; flex: 1; overflow: hidden; }
+#blocklyDiv { flex: 1; height: 100%; }
+
+/* ── Output panel ────────────────────────────────────────────────────────────── */
+.output-panel {
+  width: 420px;
+  background: var(--bg-base);
+  border-left: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+.output-tabs {
+  display: flex;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+}
+.tab {
+  padding: 11px 18px;
+  font-size: 0.76rem;
+  font-weight: 500;
+  cursor: pointer;
+  color: var(--text-muted);
+  border-bottom: 2px solid transparent;
+  transition: color var(--t-fast), border-color var(--t-fast);
+  user-select: none;
+}
+.tab:hover  { color: var(--text-secondary); }
+.tab.active { color: var(--accent-bright); border-bottom-color: var(--accent); }
+
+.tab-content { display: none; flex: 1; overflow: hidden; flex-direction: column; }
+.tab-content.active { display: flex; }
+
+pre#luaOutput {
+  flex: 1;
+  overflow: auto;
+  padding: 14px 16px;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  line-height: 1.7;
+  color: var(--text-code);
+  white-space: pre;
+}
+pre#luaOutput::-webkit-scrollbar        { width: 5px; height: 5px; }
+pre#luaOutput::-webkit-scrollbar-track  { background: transparent; }
+pre#luaOutput::-webkit-scrollbar-thumb  { background: var(--border-muted); border-radius: 3px; }
+pre#luaOutput::-webkit-scrollbar-thumb:hover { background: var(--border-focus); }
+
+/* ── Lua syntax ───────────────────────────────────────────────────────────────── */
+.kw  { color: var(--lua-kw); }
+.str { color: var(--lua-str); }
+.cmt { color: var(--lua-cmt); font-style: italic; }
+.num { color: var(--lua-num); }
+
+/* ── Status bar ───────────────────────────────────────────────────────────────── */
+#statusBar {
+  padding: 6px 16px;
+  font-size: 0.7rem;
+  background: var(--bg-surface);
+  border-top: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+#statusBar::before {
+  content: '';
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--success);
+  flex-shrink: 0;
+}
+
+/* ── Copy badge ───────────────────────────────────────────────────────────────── */
+#copyBadge {
+  position: fixed;
+  bottom: 40px;
+  right: 430px;
+  background: var(--bg-raised);
+  border: 1px solid var(--success);
+  color: var(--success);
+  padding: 7px 14px;
+  border-radius: var(--radius-md);
+  font-size: 0.78rem;
+  font-weight: 600;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+  animation: badgeFade 2.2s forwards;
+  display: none;
+}
+@keyframes badgeFade {
+  0%      { opacity:0; transform:translateY(4px); }
+  10%,75% { opacity:1; transform:translateY(0); }
+  100%    { opacity:0; transform:translateY(-4px); }
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   BLOCKLY OVERRIDES — minimal, ne pas casser le rendu des blocs
+   ════════════════════════════════════════════════════════════════════════════ */
+
+/* Canvas */
+.blocklyMainBackground { fill: #0e1117 !important; }
+.blocklyGridLine       { stroke: #1c2433 !important; }
+
+/* Scrollbars */
+.blocklyScrollbarHandle     { fill: #2a3d55 !important; }
+.blocklyScrollbarBackground { fill: transparent !important; }
+
+/* Toolbox */
+.blocklyToolboxDiv {
+  background: #141921 !important;
+  border-right: 1px solid #1f2d40 !important;
+}
+.blocklyTreeLabel {
+  color: #8a9bb5 !important;
+  font-size: 0.78rem !important;
+  font-family: 'Inter', sans-serif !important;
+}
+.blocklyTreeRow:hover        { background: #243044 !important; }
+.blocklyTreeSelected > .blocklyTreeRow { background: #1c2433 !important; }
+.blocklyTreeSelected .blocklyTreeLabel { color: #e2e8f0 !important; }
+
+/* Flyout */
+.blocklyFlyoutBackground { fill: #141921 !important; opacity: 1 !important; }
+
+/* ── Block text ───────────────────────────────────────────────────────────────
+   Force text to black everywhere — readable on all block colours.
+   1px stroke = subtle dark halo, keeps emoji visible near dark block edges.
+   paint-order: stroke fill ensures stroke draws BEHIND the fill, not over it.
+*/
+.blocklyText {
+  fill: #000000 !important;
+  paint-order: stroke fill !important;
+  stroke: rgba(0, 0, 0, 0.35) !important;
+  stroke-width: 1px !important;
+  stroke-linejoin: round !important;
+}
+.blocklyEditableText text,
+.blocklyNonEditableText text {
+  fill: #000000 !important;
+  paint-order: stroke fill !important;
+  stroke: rgba(0, 0, 0, 0.35) !important;
+  stroke-width: 1px !important;
+  stroke-linejoin: round !important;
+}
+
+/* Tooltip */
+.blocklyTooltipDiv {
+  z-index: 99999 !important;
+  max-width: 360px !important;
+  white-space: pre-line !important;
+  background: #1c2433 !important;
+  color: #e2e8f0 !important;
+  border: 1px solid #4a9eff !important;
+  border-radius: 8px !important;
+  padding: 10px 14px !important;
+  font-size: 0.74rem !important;
+  font-family: 'Inter', sans-serif !important;
+  line-height: 1.6 !important;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.7) !important;
+  pointer-events: none !important;
+}
+
+/* ── Responsive ──────────────────────────────────────────────────────────────── */
+@media (max-width: 1100px) {
+  .output-panel { width: 360px; }
+  #scriptName   { width: 110px; }
+}
+
+/* ── Help documentation ─────────────────────────────────────────────────────── */
+.help-doc {
+  flex: 1;
+  overflow: auto;
+  padding: 14px;
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  line-height: 1.55;
+}
+.help-doc::-webkit-scrollbar        { width: 5px; height: 5px; }
+.help-doc::-webkit-scrollbar-track  { background: transparent; }
+.help-doc::-webkit-scrollbar-thumb  { background: var(--border-muted); border-radius: 3px; }
+.help-doc::-webkit-scrollbar-thumb:hover { background: var(--border-focus); }
+
+.help-hero,
+.help-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  padding: 13px 14px;
+  margin-bottom: 12px;
+}
+.help-hero {
+  background:
+    radial-gradient(circle at top right, rgba(96,184,255,0.12), transparent 45%),
+    linear-gradient(180deg, var(--bg-raised), var(--bg-surface));
+  border-color: var(--border-muted);
+}
+.help-kicker {
+  color: var(--accent-bright);
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: 5px;
+}
+.help-hero h2,
+.help-card h3 {
+  color: var(--text-primary);
+  margin: 0 0 8px;
+  font-size: 0.94rem;
+  line-height: 1.25;
+}
+.help-card h4 {
+  color: var(--text-primary);
+  margin: 0 0 6px;
+  font-size: 0.78rem;
+}
+.help-hero p,
+.help-card p { margin: 0 0 8px; }
+.help-card p:last-child { margin-bottom: 0; }
+
+.help-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.help-grid .help-card { margin-bottom: 0; }
+
+.help-card ul,
+.help-card ol {
+  padding-left: 18px;
+  margin: 0;
+}
+.help-card li { margin: 5px 0; }
+.help-card strong { color: var(--text-primary); font-weight: 600; }
+.help-card em { color: var(--accent-bright); font-style: normal; }
+.help-card code,
+.help-tags code {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--text-code);
+  background: var(--bg-base);
+  border: 1px solid var(--border-subtle);
+  border-radius: 5px;
+  padding: 1px 5px;
+}
+
+.help-steps {
+  counter-reset: help-step;
+  list-style: none;
+  padding-left: 0 !important;
+}
+.help-steps li {
+  position: relative;
+  padding-left: 28px;
+}
+.help-steps li::before {
+  counter-increment: help-step;
+  content: counter(help-step);
+  position: absolute;
+  left: 0;
+  top: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--accent-glow);
+  color: var(--accent-bright);
+  border: 1px solid rgba(96,184,255,0.28);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.62rem;
+  font-weight: 700;
+}
+
+.help-tags {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 7px 10px;
+  align-items: center;
+}
+.help-tags span { color: var(--text-secondary); }
+
+.help-category-list {
+  display: grid;
+  gap: 8px;
+}
+.help-category-list div {
+  border-left: 3px solid var(--c, var(--border-muted));
+  background: rgba(255,255,255,0.018);
+  border-radius: 6px;
+  padding: 7px 9px;
+}
+.help-category-list span {
+  color: var(--text-primary);
+  font-weight: 700;
+}
+.help-category-list p {
+  margin: 3px 0 0;
+  color: var(--text-secondary);
+}
+
+.help-do-dont {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.help-do-dont > div {
+  background: var(--bg-base);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 10px;
+}
+.help-note {
+  color: var(--text-muted);
+  border-top: 1px solid var(--border-subtle);
+  padding-top: 8px;
+}
+
+@media (max-width: 1180px) {
+  .help-grid,
+  .help-do-dont { grid-template-columns: 1fr; }
+}

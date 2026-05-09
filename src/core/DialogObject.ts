@@ -239,8 +239,25 @@ export type MetaObjectType = typeof META_OBJECT_TYPES[number];
 
 /** Return code constants from dialogObject methods. */
 export const HOOK_RESULT = {
-  SUCCESS:         0,
-  NOT_ENOUGH_CREDITS: -1,
-  INVENTORY_FULL:  -2,
-  REFUSED:         -3,
+  // Generic
+  SUCCESS:              0,
+  NOT_ENOUGH_CREDITS:  -1,
+  INVENTORY_FULL:      -2,
+  REFUSED:             -3,
+
+  // destroyShip — returns 1 on success (Java source confirmed)
+  DESTROY_SUCCESS:      1,
+  NOT_FOUND:           -1,
+
+  // hireConverationPartner — no -1 (credit check removed in Java source)
+  CREW_FULL_OR_IN_TEAM:-2,
+  FACTION_MISMATCH:    -3,
+
+  // giveGravity
+  GRAVITY_ALREADY_SET:  1,
+  GRAVITY_FAILED:      -1,
+
+  // giveMetaItem
+  META_NO_CREDITS:     -1,
+  META_INV_FULL:       -2,
 } as const;

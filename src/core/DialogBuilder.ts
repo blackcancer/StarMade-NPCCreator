@@ -11,7 +11,7 @@
 import { DialogNode } from './DialogNode.js';
 import { HookDefinition, Hooks } from './Hook.js';
 import { ScriptDefinition, ScriptOptions } from './ScriptDefinition.js';
-import { HOOK_RESULT } from './DialogObject.js';
+import { HOOK_RESULT, MetaObjectType } from './DialogObject.js';
 
 /** Counter for unique variable names. */
 let _nodeCounter = 0;
@@ -231,6 +231,165 @@ export class NodeBuilder {
   moveTo(x: number, y: number, z: number): this {
     const hook = this._script.registerHook(Hooks.moveTo(x, y, z));
     this._node.setHook(hook);
+    return this;
+  }
+
+  // ── World actions (new) ─────────────────────────────────────────────────
+
+  /**
+   * Destroy an entity by UID prefix.
+   * SUCCESS returns code 1 (Java confirmed), -1 = not found.
+   */
+  destroyShip(
+    uid: string,
+    successText = 'Done!',
+    failText    = 'Entity not found.',
+  ): this {
+    const hook    = this._script.registerHook(Hooks.destroyShip(uid));
+    const success = new DialogNode(nextVar('entryDestroyed'), successText);
+    const fail    = new DialogNode(nextVar('entryDestroyFail'), failText);
+    this._node
+      .setHook(hook)
+      .addReaction(HOOK_RESULT.DESTROY_SUCCESS, success)   // 1 = success
+      .addReaction(HOOK_RESULT.NOT_FOUND, fail);            // -1 = not found
+    return this;
+  }
+
+  /**
+   * Enable or disable player gravity.
+   * Returns 0 (success), 1 (already set), -1 (failed).
+   */
+  giveGravity(
+    active: boolean,
+    successText = active ? 'Gravity enabled.' : 'Gravity disabled.',
+    alreadySetText = 'Already in that state.',
+    failText = 'Could not change gravity.',
+  ): this {
+    const hook      = this._script.registerHook(Hooks.giveGravity(active));
+    const success   = new DialogNode(nextVar('entryGravOk'),   successText);
+    const alreadySet= new DialogNode(nextVar('entryGravSet'),  alreadySetText);
+    const fail      = new DialogNode(nextVar('entryGravFail'), failText);
+    this._node
+      .setHook(hook)
+      .addReaction(HOOK_RESULT.SUCCESS,            success)
+      .addReaction(HOOK_RESULT.GRAVITY_ALREADY_SET, alreadySet) // 1
+      .addReaction(HOOK_RESULT.GRAVITY_FAILED,      fail);       // -1
+    return this;
+  }
+
+  /**
+   * Start a tutorial sequence.
+   * Always returns 0.
+   */
+  callTutorial(name: string, successText = 'Tutorial started!'): this {
+    const hook    = this._script.registerHook(Hooks.callTutorial(name));
+    const success = new DialogNode(nextVar('entryTutorial'), successText);
+    this._node
+      .setHook(hook)
+      .addReaction(HOOK_RESULT.SUCCESS, success);
+    return this;
+  }
+
+  /**
+   * Spawn a new crew NPC for a credit cost.
+   * Returns 0 (success), -1 (no credits), -2 (crew full).
+   */
+  spawnCrew(
+    cost: number,
+    successText    = 'Welcome!',
+    noCreditsText  = "You don't have enough money!",
+    crewFullText   = "You can't have more crew!",
+  ): this {
+    const hook     = this._script.registerHook(Hooks.spawnCrew(cost));
+    const success  = new DialogNode(nextVar('entrySpawnOk'),   successText);
+    const noCredit = new DialogNode(nextVar('entrySpawnNoC'),  noCreditsText);
+    const crewFull = new DialogNode(nextVar('entrySpawnFull'), crewFullText);
+    this._node
+      .setHook(hook)
+      .addReaction(HOOK_RESULT.SUCCESS,            success)
+      .addReaction(HOOK_RESULT.NOT_ENOUGH_CREDITS, noCredit)
+      .addReaction(HOOK_RESULT.INVENTORY_FULL,     crewFull);
+    return this;
+  }
+
+  /**
+   * Give the player a meta-item.
+   * @param metaType  MetaObjectType name ('WEAPON', 'HELMET', etc.)
+   * @param subType   Sub-type ID
+   * @param cost      Credit cost (NOT count — Java API confirmed)
+   * Returns 0 (success), -1 (no credits), -2 (inventory full).
+   */
+  giveMetaItem(
+    metaType: MetaObjectType,
+    subType: number,
+    cost: number,
+    successText  = 'Here you go!',
+    noCreditsText = "You don't have enough credits.",
+    invFullText  = 'Inventory full.',
+  ): this {
+    const hook     = this._script.registerHook(Hooks.giveMetaItem(metaType, subType, cost));
+    const success  = makeSuccess(this._script, successText);
+    const noCredit = new DialogNode(nextVar('entryMetaNoC'),  noCreditsText);
+    const invFull  = new DialogNode(nextVar('entryMetaFull'), invFullText);
+    this._node
+      .setHook(hook)
+      .addReaction(HOOK_RESULT.SUCCESS,         success)
+      .addReaction(HOOK_RESULT.META_NO_CREDITS, noCredit)
+      .addReaction(HOOK_RESULT.META_INV_FULL,   invFull);
+    return this;
+  }
+
+  /**
+   * Send a HUD message to the player (outside the dialog).
+   * Uses org.schema.schine.network.server.ServerMessage (correct package).
+   * Always returns 0 — no branch needed, chain with next node below.
+   */
+  sendMessage(
+    text: string,
+    type: 'simple' | 'info' | 'warn' | 'error' = 'info',
+  ): this {
+    const hook = this._script.registerHook(Hooks.sendMessage(text, type));
+    this._node.setHook(hook);
+    return this;
+  }
+
+  /**
+   * Store a named conversation state on the NPC (no DB required).
+   * Persists between dialog openings. Returns 0 / -1.
+   */
+  setConversationState(
+    state: string,
+    successText = 'State set.',
+    failText    = 'Could not set state.',
+  ): this {
+    const hook    = this._script.registerHook(Hooks.setConversationState(state));
+    const success = new DialogNode(nextVar('entryConvOk'),   successText);
+    const fail    = new DialogNode(nextVar('entryConvFail'), failText);
+    this._node
+      .setHook(hook)
+      .addReaction(HOOK_RESULT.SUCCESS,   success)
+      .addReaction(HOOK_RESULT.NOT_FOUND, fail);
+    return this;
+  }
+
+  /**
+   * Branch based on whether the player is standing at block coordinates.
+   * Returns 0 (at block) / -1 (not there).
+   */
+  isAtBlock(
+    x: number,
+    y: number,
+    z: number,
+    inPositionText  = 'You are in position!',
+    notThereText    = 'You need to go to the marker.',
+  ): this {
+    const hook        = this._script.registerHook(Hooks.isAtBlock(x, y, z));
+    const inPosition  = new DialogNode(nextVar('entryAtBlock'),  inPositionText);
+    const notThere    = new DialogNode(nextVar('entryNotThere'), notThereText);
+    this._node
+      .setHook(hook)
+      .addReaction(HOOK_RESULT.SUCCESS,   inPosition)
+      .addReaction(HOOK_RESULT.NOT_FOUND, notThere);
     return this;
   }
 
