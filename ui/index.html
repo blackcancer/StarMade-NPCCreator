@@ -312,6 +312,7 @@
     <block type="npc_memory_increment"></block>
   </category>
   <category name="📜 Quests" colour="#d35400">
+    <block type="npc_quest_offer"></block>
     <block type="npc_quest_start"></block>
     <block type="npc_quest_set_step"></block>
     <block type="npc_quest_complete"></block>
@@ -888,6 +889,44 @@ Blockly.Blocks['npc_memory_increment'] = {
   }
 };
 
+// ── npc_quest_offer ──────────────────────────────────────────────────────────
+Blockly.Blocks['npc_quest_offer'] = {
+  init() {
+    this.appendDummyInput()
+      .appendField('📜 Quest OFFER id')
+      .appendField(new Blockly.FieldTextInput('intro_delivery'), 'QUEST_ID');
+    this.appendDummyInput()
+      .appendField('Title')
+      .appendField(new Blockly.FieldTextInput('Delivery Mission'), 'TITLE');
+    this.appendDummyInput()
+      .appendField('Offer text')
+      .appendField(new Blockly.FieldTextInput('Will you take this mission?'), 'OFFER_TEXT');
+    this.appendDummyInput()
+      .appendField('Accept label')
+      .appendField(new Blockly.FieldTextInput('Yes, I will do it!'), 'ACCEPT_LABEL')
+      .appendField('Refuse label')
+      .appendField(new Blockly.FieldTextInput('Not now.'), 'REFUSE_LABEL');
+    this.appendDummyInput()
+      .appendField('On accept text')
+      .appendField(new Blockly.FieldTextInput('Quest started. Good luck!'), 'ACCEPT_TEXT');
+    this.appendDummyInput()
+      .appendField('On refuse text')
+      .appendField(new Blockly.FieldTextInput('Come back if you change your mind.'), 'REFUSE_TEXT');
+    this.appendDummyInput()
+      .appendField('Start at step')
+      .appendField(new Blockly.FieldNumber(1, 0), 'STEP');
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour('#d35400');
+    this.setTooltip(
+      'QUEST OFFER\nPropose une quête au joueur avec boutons Accepter/Refuser.\n' +
+      'Si acceptée : insère une ligne dans npc_quests (status=active, step=N).\n' +
+      'Si refusée : aucun changement en DB.\n' +
+      'Si déjà acceptée : affiche le texte de suivi à la place.'
+    );
+  }
+};
+
 // ── npc_quest_start ──────────────────────────────────────────────────────────
 Blockly.Blocks['npc_quest_start'] = {
   init() {
@@ -902,7 +941,7 @@ Blockly.Blocks['npc_quest_start'] = {
     this.setPreviousStatement(true, null);
     this.setNextStatement(true, null);
     this.setColour('#d35400');
-    this.setTooltip('QUEST START\nMarks a quest as active and initializes its step in built-in memory.');
+    this.setTooltip('QUEST START\nDémarre une quête : insère/met à jour npc_quests avec status=active.');
   }
 };
 
@@ -920,7 +959,7 @@ Blockly.Blocks['npc_quest_set_step'] = {
     this.setPreviousStatement(true, null);
     this.setNextStatement(true, null);
     this.setColour('#d35400');
-    this.setTooltip('QUEST SET STEP\nSets the numeric quest step in built-in memory and keeps status active.');
+    this.setTooltip('QUEST SET STEP\nMet à jour le step dans npc_quests (status reste active).');
   }
 };
 
@@ -931,12 +970,20 @@ Blockly.Blocks['npc_quest_complete'] = {
       .appendField('📜 Quest COMPLETE id')
       .appendField(new Blockly.FieldTextInput('intro_delivery'), 'QUEST_ID');
     this.appendDummyInput()
+      .appendField('Récompense crédits')
+      .appendField(new Blockly.FieldNumber(0, 0), 'REWARD_CREDITS');
+    this.appendDummyInput()
+      .appendField('Récompense item type')
+      .appendField(new Blockly.FieldNumber(0, 0), 'REWARD_ITEM')
+      .appendField('quantité')
+      .appendField(new Blockly.FieldNumber(0, 0), 'REWARD_COUNT');
+    this.appendDummyInput()
       .appendField('Success text')
       .appendField(new Blockly.FieldTextInput('Quest complete!'), 'SUCCESS');
     this.setPreviousStatement(true, null);
     this.setNextStatement(true, null);
     this.setColour('#d35400');
-    this.setTooltip('QUEST COMPLETE\nMarks a quest as complete in built-in memory.');
+    this.setTooltip('QUEST COMPLETE\nMarque la quête comme terminée dans npc_quests + verse récompenses crédits/item.');
   }
 };
 
@@ -1931,13 +1978,13 @@ function buildConditionExpression(block) {
     case 'npc_cond_quest_status': {
       const questId = String(block.getFieldValue('QUEST_ID') || 'intro_delivery').replace(/"/g, '\\"');
       const status  = block.getFieldValue('STATUS') ?? 'active';
-      return `(_memGetText(dialogObject:getOwnName(), "${questStatusKey(questId)}", "") == ${luaStringLiteral(status)})`;
+      return `(_questStatus(dialogObject:getOwnName(), ${luaStringLiteral(questId)}) == ${luaStringLiteral(status || 'none')})`;
     }
     case 'npc_cond_quest_step': {
       const questId = String(block.getFieldValue('QUEST_ID') || 'intro_delivery').replace(/"/g, '\\"');
       const op      = block.getFieldValue('OP') || '==';
       const step    = block.getFieldValue('STEP') || 0;
-      return `(_memGetNumber(dialogObject:getOwnName(), "${questStepKey(questId)}", 0) ${op} ${step})`;
+      return `(_questStep(dialogObject:getOwnName(), ${luaStringLiteral(questId)}) ${op} ${step})`;
     }
     case 'npc_cond_and': {
       const a = buildConditionExpression(block.getInputTargetBlock('A'));
@@ -2459,8 +2506,7 @@ function processActionBlock(block, parentVarName) {
       const hookFn = `questStartHook_${sanitizeIdentPart(questId)}`;
       registerHook(hookFn, [
         `local player = dialogObject:getOwnName()`,
-        `_memSet(player, ${luaStringLiteral(questStatusKey(questId))}, "active")`,
-        `_memSet(player, ${luaStringLiteral(questStepKey(questId))}, ${step})`,
+        `_questSet(player, ${luaStringLiteral(questId)}, "active", ${step})`,
         `return 0`,
       ]);
       const waitVn = makeNode('Starting quest...');
@@ -2477,8 +2523,7 @@ function processActionBlock(block, parentVarName) {
       const hookFn = `questSetStepHook_${sanitizeIdentPart(questId)}_${sanitizeIdentPart(step)}`;
       registerHook(hookFn, [
         `local player = dialogObject:getOwnName()`,
-        `_memSet(player, ${luaStringLiteral(questStatusKey(questId))}, "active")`,
-        `_memSet(player, ${luaStringLiteral(questStepKey(questId))}, ${step})`,
+        `_questSet(player, ${luaStringLiteral(questId)}, "active", ${step})`,
         `return 0`,
       ]);
       const waitVn = makeNode('Updating quest...');
@@ -2489,14 +2534,24 @@ function processActionBlock(block, parentVarName) {
       return waitVn;
     }
     case 'npc_quest_complete': {
-      const questId = block.getFieldValue('QUEST_ID');
-      const success = block.getFieldValue('SUCCESS');
+      const questId      = block.getFieldValue('QUEST_ID');
+      const success      = block.getFieldValue('SUCCESS');
+      const rewardCreds  = Number(block.getFieldValue('REWARD_CREDITS') || 0);
+      const rewardItem   = Number(block.getFieldValue('REWARD_ITEM')    || 0);
+      const rewardCount  = Number(block.getFieldValue('REWARD_COUNT')   || 0);
       const hookFn = `questCompleteHook_${sanitizeIdentPart(questId)}`;
-      registerHook(hookFn, [
+      const hookBody = [
         `local player = dialogObject:getOwnName()`,
-        `_memSet(player, ${luaStringLiteral(questStatusKey(questId))}, "complete")`,
-        `return 0`,
-      ]);
+        `_questSet(player, ${luaStringLiteral(questId)}, "complete", _questStep(player, ${luaStringLiteral(questId)}))`,
+      ];
+      if (rewardCreds > 0) {
+        hookBody.push(`dialogObject:getEntity():setCredits(dialogObject:getEntity():getCredits() + ${rewardCreds})`);
+      }
+      if (rewardItem > 0 && rewardCount > 0) {
+        hookBody.push(`dialogObject:giveType(${rewardItem}, ${rewardCount})`);
+      }
+      hookBody.push(`return 0`);
+      registerHook(hookFn, hookBody);
       const waitVn = makeNode('Completing quest...');
       const successVn = makeNode(success || 'Quest complete!');
       const waitNode = getNode(waitVn);
@@ -2510,7 +2565,7 @@ function processActionBlock(block, parentVarName) {
       const hookFn = `questFailHook_${sanitizeIdentPart(questId)}`;
       registerHook(hookFn, [
         `local player = dialogObject:getOwnName()`,
-        `_memSet(player, ${luaStringLiteral(questStatusKey(questId))}, "failed")`,
+        `_questSet(player, ${luaStringLiteral(questId)}, "failed", _questStep(player, ${luaStringLiteral(questId)}))`,
         `return 0`,
       ]);
       const waitVn = makeNode('Updating quest...');
@@ -2519,6 +2574,35 @@ function processActionBlock(block, parentVarName) {
       waitNode.hook = hookFn;
       waitNode.reactions = [{ code: 0, target: successVn }];
       return waitVn;
+    }
+    case 'npc_quest_offer': {
+      const questId     = block.getFieldValue('QUEST_ID');
+      const offerText   = block.getFieldValue('OFFER_TEXT')   || 'Will you take this mission?';
+      const acceptLabel = block.getFieldValue('ACCEPT_LABEL') || 'Yes, I will do it!';
+      const refuseLabel = block.getFieldValue('REFUSE_LABEL') || 'Not now.';
+      const acceptText  = block.getFieldValue('ACCEPT_TEXT')  || 'Quest started. Good luck!';
+      const refuseText  = block.getFieldValue('REFUSE_TEXT')  || 'Come back if you change your mind.';
+      const step        = block.getFieldValue('STEP') || 1;
+      const hookFn = `questOfferAcceptHook_${sanitizeIdentPart(questId)}`;
+      registerHook(hookFn, [
+        `local player = dialogObject:getOwnName()`,
+        `_questSet(player, ${luaStringLiteral(questId)}, "active", ${step})`,
+        `return 0`,
+      ]);
+      // Noeud offre
+      const offerVn  = makeNode(offerText);
+      const acceptVn = makeNode(acceptText);
+      const refuseVn = makeNode(refuseText);
+      const offerNode = getNode(offerVn);
+      // Bouton Accepter → hook → texte succès
+      const waitVn = makeNode('Starting quest...');
+      const waitNode = getNode(waitVn);
+      waitNode.hook = hookFn;
+      waitNode.reactions = [{ code: 0, target: acceptVn }];
+      offerNode.choices = offerNode.choices || [];
+      offerNode.choices.push({ label: acceptLabel, target: waitVn });
+      offerNode.choices.push({ label: refuseLabel, target: refuseVn });
+      return offerVn;
     }
     case 'npc_custom_hook': {
       const name    = block.getFieldValue('NAME');
@@ -2574,6 +2658,7 @@ function generateLua(scriptName) {
     dbTables: new Map(),
     dbPath: null,
     usesHsqlMemory: false,
+    usesQuestTable: false,
     luaVars: [],
   };
 
@@ -2613,12 +2698,14 @@ function generateLua(scriptName) {
     'npc_quest_set_step',
     'npc_quest_complete',
     'npc_quest_fail',
+    'npc_quest_offer',
     'npc_cond_quest_status',
     'npc_cond_quest_step',
   ].includes(b.type));
   if (usesMemory) {
-    // HSQLDB world-aware: path is resolved at runtime via ServerConfig.WORLD
+    // Table npc_quests dédiée (world-aware HSQLDB)
     _state.usesHsqlMemory = true;
+    _state.usesQuestTable = true;
   }
 
   // Find greeting blocks
@@ -2644,34 +2731,55 @@ function generateLua(scriptName) {
   }
 
   // HSQLDB persistent state (world-aware, auto-create DB + tables)
-  const needsHsql = _state.usesHsqlMemory || (_state.dbTables.size > 0);
+  const needsHsql = _state.usesHsqlMemory || (_state.usesQuestTable) || (_state.dbTables.size > 0);
   if (needsHsql) {
     lines.push(`-- HSQLDB persistent state (world-aware, auto-creates DB and tables)`);
-    lines.push(`local _ServerConfig = luajava.bindClass("org.schema.game.server.data.ServerConfig")`);
-    lines.push(`local _worldName    = _ServerConfig.WORLD:getString():lower()`);
-    lines.push(`local _npcDbUrl     = "jdbc:hsqldb:file:./server-database/" .. _worldName .. "/npc_data/npc_state;shutdown=false;hsqldb.write_delay=false"`);
-    lines.push(`luajava.bindClass("org.hsqldb.jdbc.JDBCDriver")  -- enregistre le driver (déjà chargé par StarMade)`);
+    lines.push(`local _ServerConfig  = luajava.bindClass("org.schema.game.server.data.ServerConfig")`);
+    lines.push(`local _worldName     = _ServerConfig.WORLD:getString():lower()`);
+    lines.push(`local _npcDbUrl      = "jdbc:hsqldb:file:./server-database/" .. _worldName .. "/npc_data/npc_state;shutdown=false;hsqldb.write_delay=false"`);
+    lines.push(`luajava.bindClass("org.hsqldb.jdbc.JDBCDriver")`);
     lines.push(`local _DriverManager = luajava.bindClass("java.sql.DriverManager")`);
-    lines.push(``);
-    lines.push(`-- Ouvre (et crée si besoin) la connexion HSQLDB`);
-    lines.push(`local _npcDb = _DriverManager.getConnection(_npcDbUrl, "SA", "")`);
+    lines.push(`local _npcDb         = _DriverManager.getConnection(_npcDbUrl, "SA", "")`);
     lines.push(`_npcDb:setAutoCommit(true)`);
     lines.push(``);
-    // Create all declared tables
-    const tableEntries = [..._state.dbTables.entries()];
-    // Always include npc_memory when usesHsqlMemory
-    if (_state.usesHsqlMemory && !_state.dbTables.has('npc_memory')) {
-      tableEntries.push(['npc_memory', { cols: 'player VARCHAR(255) NOT NULL, k VARCHAR(255) NOT NULL, v LONGVARCHAR, PRIMARY KEY(player, k)' }]);
+    // --- Table npc_quests ---
+    if (_state.usesQuestTable) {
+      lines.push(`-- Table npc_quests : état des quêtes par joueur`);
+      lines.push(`do`);
+      lines.push(`  local _s = _npcDb:createStatement()`);
+      lines.push(`  _s:execute("CREATE CACHED TABLE IF NOT EXISTS npc_quests (" ..`);
+      lines.push(`    "  player       VARCHAR(255) NOT NULL," ..`);
+      lines.push(`    "  quest_id     VARCHAR(255) NOT NULL," ..`);
+      lines.push(`    "  status       VARCHAR(32)  NOT NULL DEFAULT ''none''," ..`);
+      lines.push(`    "  step         INTEGER      NOT NULL DEFAULT 0," ..`);
+      lines.push(`    "  started_at   BIGINT       NOT NULL DEFAULT 0," ..`);
+      lines.push(`    "  completed_at BIGINT       NOT NULL DEFAULT 0," ..`);
+      lines.push(`    "  PRIMARY KEY (player, quest_id)" ..`);
+      lines.push(`  ")")`);
+      lines.push(`  _s:close()`);
+      lines.push(`end`);
+      lines.push(``);
     }
-    for (const [tbl, { cols }] of tableEntries) {
+    // --- Table npc_memory (K/V générique) ---
+    if (_state.usesHsqlMemory) {
+      lines.push(`-- Table npc_memory : stockage clé/valeur générique par joueur`);
+      lines.push(`do`);
+      lines.push(`  local _s = _npcDb:createStatement()`);
+      lines.push(`  _s:execute("CREATE CACHED TABLE IF NOT EXISTS npc_memory (player VARCHAR(255) NOT NULL, k VARCHAR(255) NOT NULL, v LONGVARCHAR, PRIMARY KEY(player, k))")`);
+      lines.push(`  _s:close()`);
+      lines.push(`end`);
+      lines.push(``);
+    }
+    // --- Tables custom ---
+    for (const [tbl, { cols }] of _state.dbTables.entries()) {
       lines.push(`do`);
       lines.push(`  local _s = _npcDb:createStatement()`);
       lines.push(`  _s:execute("CREATE CACHED TABLE IF NOT EXISTS ${tbl} (${cols})")`);
       lines.push(`  _s:close()`);
       lines.push(`end`);
     }
-    lines.push(``);
-    // Core DB helpers
+    if (_state.dbTables.size > 0) lines.push(``);
+    // --- Helpers DB génériques ---
     lines.push(`local function _dbGet(sql, ...)`);
     lines.push(`  local ps = _npcDb:prepareStatement(sql)`);
     lines.push(`  local a = {...}; for i,v in ipairs(a) do ps:setObject(i, v) end`);
@@ -2684,22 +2792,18 @@ function generateLua(scriptName) {
     lines.push(`  local a = {...}; for i,v in ipairs(a) do ps:setObject(i, v) end`);
     lines.push(`  ps:executeUpdate(); ps:close()`);
     lines.push(`end`);
-    // Upsert via HSQLDB MERGE INTO
     lines.push(`local function _dbUpsert(t, kc, kv, col, val)`);
     lines.push(`  _dbExec("MERGE INTO "..t.." AS tgt USING (VALUES(CAST(? AS VARCHAR(255)),CAST(? AS LONGVARCHAR))) AS src(k,v) ON tgt."..kc.."=src.k WHEN MATCHED THEN UPDATE SET "..col.."=src.v WHEN NOT MATCHED THEN INSERT ("..kc..","..col..") VALUES(src.k,src.v)", kv, val)`);
     lines.push(`end`);
     lines.push(`local function _dbIncrement(t, kc, kv, col, n)`);
     lines.push(`  n = n or 1`);
     lines.push(`  local cur = _dbGet("SELECT "..col.." FROM "..t.." WHERE "..kc.."=?", kv)`);
-    lines.push(`  if cur == nil then`);
-    lines.push(`    _dbExec("INSERT INTO "..t.."("..kc..","..col..") VALUES(?,?)", kv, n)`);
-    lines.push(`  else`);
-    lines.push(`    _dbExec("UPDATE "..t.." SET "..col.."="..col.." + ? WHERE "..kc.."=?", n, kv)`);
-    lines.push(`  end`);
+    lines.push(`  if cur == nil then _dbExec("INSERT INTO "..t.."("..kc..","..col..") VALUES(?,?)", kv, n)`);
+    lines.push(`  else _dbExec("UPDATE "..t.." SET "..col.."="..col.." + ? WHERE "..kc.."=?", n, kv) end`);
     lines.push(`end`);
     lines.push(`local function _dbGetPlayerValue(t, col, player, def)`);
     lines.push(`  local v = _dbGet("SELECT "..col.." FROM "..t.." WHERE player=?", player)`);
-    lines.push(`  if v == nil then return def end; return v`);
+    lines.push(`  return v ~= nil and v or def`);
     lines.push(`end`);
     lines.push(`local function _dbGetPlayerNumber(t, col, player, def)`);
     lines.push(`  local n = tonumber(_dbGetPlayerValue(t, col, player, def))`);
@@ -2712,8 +2816,35 @@ function generateLua(scriptName) {
     lines.push(`local function _dbHasPlayerRow(t, player)`);
     lines.push(`  return _dbGet("SELECT 1 FROM "..t.." WHERE player=?", player) ~= nil`);
     lines.push(`end`);
-    // Memory helpers (per-player key-value, stored in npc_memory)
+    lines.push(``);
+    // --- Helpers quêtes dédiés ---
+    if (_state.usesQuestTable) {
+      lines.push(`-- Helpers quêtes (npc_quests)`);
+      lines.push(`local function _questSet(player, qid, status, step)`);
+      lines.push(`  local now = luajava.bindClass("java.lang.System").currentTimeMillis()`);
+      lines.push(`  if _dbGet("SELECT 1 FROM npc_quests WHERE player=? AND quest_id=?", player, qid) == nil then`);
+      lines.push(`    _dbExec("INSERT INTO npc_quests(player,quest_id,status,step,started_at,completed_at) VALUES(?,?,?,?,?,0)", player, qid, status, step, now)`);
+      lines.push(`  else`);
+      lines.push(`    local ca = (status == "complete" or status == "failed") and now or 0`);
+      lines.push(`    _dbExec("UPDATE npc_quests SET status=?,step=?,completed_at=? WHERE player=? AND quest_id=?", status, step, ca, player, qid)`);
+      lines.push(`  end`);
+      lines.push(`end`);
+      lines.push(`local function _questStatus(player, qid)`);
+      lines.push(`  local v = _dbGet("SELECT status FROM npc_quests WHERE player=? AND quest_id=?", player, qid)`);
+      lines.push(`  return v ~= nil and tostring(v) or "none"`);
+      lines.push(`end`);
+      lines.push(`local function _questStep(player, qid)`);
+      lines.push(`  local v = _dbGet("SELECT step FROM npc_quests WHERE player=? AND quest_id=?", player, qid)`);
+      lines.push(`  return v ~= nil and tonumber(v) or 0`);
+      lines.push(`end`);
+      lines.push(`local function _questHas(player, qid)`);
+      lines.push(`  return _dbGet("SELECT 1 FROM npc_quests WHERE player=? AND quest_id=?", player, qid) ~= nil`);
+      lines.push(`end`);
+      lines.push(``);
+    }
+    // --- Helpers mémoire K/V générique ---
     if (_state.usesHsqlMemory) {
+      lines.push(`-- Helpers mémoire générique (npc_memory)`);
       lines.push(`local function _memSet(player, key, val)`);
       lines.push(`  _dbExec("MERGE INTO npc_memory AS m USING (VALUES(CAST(? AS VARCHAR(255)),CAST(? AS VARCHAR(255)),CAST(? AS LONGVARCHAR))) AS v(p,k,vv) ON m.player=v.p AND m.k=v.k WHEN MATCHED THEN UPDATE SET v=v.vv WHEN NOT MATCHED THEN INSERT(player,k,v) VALUES(v.p,v.k,v.vv)", player, key, tostring(val))`);
       lines.push(`end`);
@@ -2729,11 +2860,10 @@ function generateLua(scriptName) {
       lines.push(`  return _dbGet("SELECT 1 FROM npc_memory WHERE player=? AND k=?", player, key) ~= nil`);
       lines.push(`end`);
       lines.push(`local function _memIncrement(player, key, n)`);
-      lines.push(`  n = n or 1`);
-      lines.push(`  _memSet(player, key, _memGetNumber(player, key, 0) + n)`);
+      lines.push(`  n = n or 1; _memSet(player, key, _memGetNumber(player, key, 0) + n)`);
       lines.push(`end`);
+      lines.push(``);
     }
-    lines.push(``);
   }
 
   // Hook functions
@@ -3633,7 +3763,8 @@ function buildConditionBlockFromExpression(expr) {
     };
   }
 
-  m = expr.match(/^_memGetText\(dialogObject:getOwnName\(\),\s*"quest:([^":]+):status",\s*""\)\s*==\s*"([^"]*)"$/);
+  m = expr.match(/^_questStatus\(dialogObject:getOwnName\(\),\s*"([^"]+)"\)\s*==\s*"([^"]*)"$/) ||
+       expr.match(/^_memGetText\(dialogObject:getOwnName\(\),\s*"quest:([^":]+):status",\s*""\)\s*==\s*"([^"]*)"$/);
   if (m) {
     return {
       type: 'npc_cond_quest_status',
@@ -3644,7 +3775,8 @@ function buildConditionBlockFromExpression(expr) {
     };
   }
 
-  m = expr.match(/^_memGetNumber\(dialogObject:getOwnName\(\),\s*"quest:([^":]+):step",\s*0\)\s*(>=|<=|==|~=|>|<)\s*(-?\d+(?:\.\d+)?)$/);
+  m = expr.match(/^_questStep\(dialogObject:getOwnName\(\),\s*"([^"]+)"\)\s*(>=|<=|==|~=|>|<)\s*(-?\d+(?:\.\d+)?)$/) ||
+       expr.match(/^_memGetNumber\(dialogObject:getOwnName\(\),\s*"quest:([^":]+):step",\s*0\)\s*(>=|<=|==|~=|>|<)\s*(-?\d+(?:\.\d+)?)$/);
   if (m) {
     return {
       type: 'npc_cond_quest_step',
@@ -3855,7 +3987,27 @@ function buildActionBlock(funcName, body, boundParams, argDefs, constVals, react
   }
 
   // ── SQLite / memory / quest actions ──────────────────────────────────────
-  let m2 = body.match(/_memSet\(player,\s*"quest:([^":]+):status",\s*"active"\)[\s\S]*?_memSet\(player,\s*"quest:\1:step",\s*(-?\d+(?:\.\d+)?)\)/);
+  // Import: nouveau format HSQLDB (_questSet)
+  let m2 = body.match(/_questSet\(player,\s*"([^"]+)",\s*"active",\s*(\d+)\)/);
+  if (m2) {
+    if (/Quest updated|Updating quest/.test(reactionMeta.waitText || '')) {
+      return { type: 'npc_quest_set_step', fields: { QUEST_ID: m2[1], STEP: Number(m2[2]), SUCCESS: reactionText(reactionMeta, 0, 'Quest updated.') } };
+    }
+    return { type: 'npc_quest_start', fields: { QUEST_ID: m2[1], STEP: Number(m2[2]), SUCCESS: reactionText(reactionMeta, 0, 'Quest started.') } };
+  }
+  m2 = body.match(/_questSet\(player,\s*"([^"]+)",\s*"complete"/);
+  if (m2) {
+    const creds = (body.match(/getCredits\(\)\s*\+\s*(\d+)/) || [])[1] || 0;
+    const item  = (body.match(/giveType\((\d+),/) || [])[1] || 0;
+    const cnt   = (body.match(/giveType\(\d+,\s*(\d+)\)/) || [])[1] || 0;
+    return { type: 'npc_quest_complete', fields: { QUEST_ID: m2[1], SUCCESS: reactionText(reactionMeta, 0, 'Quest complete!'), REWARD_CREDITS: Number(creds), REWARD_ITEM: Number(item), REWARD_COUNT: Number(cnt) } };
+  }
+  m2 = body.match(/_questSet\(player,\s*"([^"]+)",\s*"failed"/);
+  if (m2) {
+    return { type: 'npc_quest_fail', fields: { QUEST_ID: m2[1], SUCCESS: reactionText(reactionMeta, 0, 'Quest failed.') } };
+  }
+  // Import: ancien format _memSet (rétro-compat)
+  m2 = body.match(/_memSet\(player,\s*"quest:([^":]+):status",\s*"active"\)[\s\S]*?_memSet\(player,\s*"quest:\1:step",\s*(-?\d+(?:\.\d+)?)\)/);
   if (m2) {
     if (/Quest updated|Updating quest/.test(reactionMeta.waitText || '')) {
       return { type: 'npc_quest_set_step', fields: { QUEST_ID: m2[1], STEP: Number(m2[2]), SUCCESS: reactionText(reactionMeta, 0, 'Quest updated.') } };
@@ -3864,7 +4016,7 @@ function buildActionBlock(funcName, body, boundParams, argDefs, constVals, react
   }
   m2 = body.match(/_memSet\(player,\s*"quest:([^":]+):status",\s*"complete"\)/);
   if (m2) {
-    return { type: 'npc_quest_complete', fields: { QUEST_ID: m2[1], SUCCESS: reactionText(reactionMeta, 0, 'Quest complete!') } };
+    return { type: 'npc_quest_complete', fields: { QUEST_ID: m2[1], SUCCESS: reactionText(reactionMeta, 0, 'Quest complete!'), REWARD_CREDITS: 0, REWARD_ITEM: 0, REWARD_COUNT: 0 } };
   }
   m2 = body.match(/_memSet\(player,\s*"quest:([^":]+):status",\s*"failed"\)/);
   if (m2) {
