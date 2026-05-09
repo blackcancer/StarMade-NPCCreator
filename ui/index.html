@@ -700,6 +700,9 @@ Blockly.Blocks['npc_activate_block'] = {
       .appendField(new Blockly.FieldDropdown([
         ['ON', 'true'], ['OFF', 'false'], ['Toggle', 'toggle']
       ]), 'STATE');
+    this.appendValueInput('X_VAR').setCheck(null).appendField('X variable');
+    this.appendValueInput('Y_VAR').setCheck(null).appendField('Y variable');
+    this.appendValueInput('Z_VAR').setCheck(null).appendField('Z variable');
     this.setPreviousStatement(true, null);
     this.setNextStatement(true, null);
     this.setColour('#9b59b6');
@@ -723,6 +726,9 @@ Blockly.Blocks['npc_move_to'] = {
       .appendField(new Blockly.FieldNumber(0), 'Y')
       .appendField('Z')
       .appendField(new Blockly.FieldNumber(0), 'Z');
+    this.appendValueInput('X_VAR').setCheck(null).appendField('X variable');
+    this.appendValueInput('Y_VAR').setCheck(null).appendField('Y variable');
+    this.appendValueInput('Z_VAR').setCheck(null).appendField('Z variable');
     this.setPreviousStatement(true, null);
     this.setNextStatement(true, null);
     this.setColour('#9b59b6');
@@ -949,6 +955,7 @@ Blockly.Blocks['npc_check_credits'] = {
     this.appendDummyInput()
       .appendField('💰 Check player credits ≥')
       .appendField(new Blockly.FieldNumber(50000, 0), 'AMOUNT');
+    this.appendValueInput('AMOUNT_VAR').setCheck(null).appendField('or variable');
     this.appendDummyInput()
       .appendField('If enough →')
       .appendField(new Blockly.FieldTextInput('You have enough credits!'), 'SUCCESS');
@@ -988,6 +995,7 @@ Blockly.Blocks['npc_check_player_value'] = {
         ['<',  '<'],
       ]), 'OP')
       .appendField(new Blockly.FieldNumber(0), 'VALUE');
+    this.appendValueInput('VALUE_VAR').setCheck(null).appendField('or variable');
     this.appendDummyInput()
       .appendField('If true →')
       .appendField(new Blockly.FieldTextInput('Condition met.'), 'SUCCESS');
@@ -1091,6 +1099,7 @@ Blockly.Blocks['npc_cond_player_value'] = {
         ['<',  '<'],
       ]), 'OP')
       .appendField(new Blockly.FieldNumber(0), 'VALUE');
+    this.appendValueInput('VALUE_VAR').setCheck(null).appendField('or variable');
     this.setOutput(true, 'npc_condition');
     this.setColour('#16a085');
     this.setTooltip('Condition expression based on a numeric player value.');
@@ -1127,6 +1136,9 @@ Blockly.Blocks['npc_cond_is_at_block'] = {
       .appendField(new Blockly.FieldNumber(0), 'Y')
       .appendField('Z')
       .appendField(new Blockly.FieldNumber(0), 'Z');
+    this.appendValueInput('X_VAR').setCheck(null).appendField('X variable');
+    this.appendValueInput('Y_VAR').setCheck(null).appendField('Y variable');
+    this.appendValueInput('Z_VAR').setCheck(null).appendField('Z variable');
     this.setOutput(true, 'npc_condition');
     this.setColour('#16a085');
     this.setTooltip('True when dialogObject:isAtBlock(x, y, z) is true.');
@@ -1162,9 +1174,11 @@ Blockly.Blocks['npc_cond_sqlite_value'] = {
         ['<',  '<'],
       ]), 'OP')
       .appendField(new Blockly.FieldTextInput('1'), 'VALUE');
+    this.appendValueInput('VALUE_VAR').setCheck(null).appendField('value variable');
     this.appendDummyInput()
       .appendField('Default if missing')
       .appendField(new Blockly.FieldTextInput('0'), 'DEFAULT');
+    this.appendValueInput('DEFAULT_VAR').setCheck(null).appendField('default variable');
     this.setOutput(true, 'npc_condition');
     this.setColour('#16a085');
     this.setTooltip(
@@ -1213,9 +1227,11 @@ Blockly.Blocks['npc_cond_sqlite_number'] = {
         ['<',  '<'],
       ]), 'OP')
       .appendField(new Blockly.FieldNumber(1), 'VALUE');
+    this.appendValueInput('VALUE_VAR').setCheck(null).appendField('value variable');
     this.appendDummyInput()
       .appendField('Default if missing')
       .appendField(new Blockly.FieldNumber(0), 'DEFAULT');
+    this.appendValueInput('DEFAULT_VAR').setCheck(null).appendField('default variable');
     this.setOutput(true, 'npc_condition');
     this.setColour('#16a085');
     this.setTooltip('Guided numeric SQLite condition for the current player. Requires a SQLite Table block.');
@@ -1235,9 +1251,11 @@ Blockly.Blocks['npc_cond_sqlite_text'] = {
         ['≠', '~='],
       ]), 'OP')
       .appendField(new Blockly.FieldTextInput('done'), 'VALUE');
+    this.appendValueInput('VALUE_VAR').setCheck(null).appendField('value variable');
     this.appendDummyInput()
       .appendField('Default if missing')
       .appendField(new Blockly.FieldTextInput(''), 'DEFAULT');
+    this.appendValueInput('DEFAULT_VAR').setCheck(null).appendField('default variable');
     this.setOutput(true, 'npc_condition');
     this.setColour('#16a085');
     this.setTooltip('Guided text SQLite condition for the current player. Requires a SQLite Table block.');
@@ -1259,9 +1277,11 @@ Blockly.Blocks['npc_cond_memory_number'] = {
         ['<',  '<'],
       ]), 'OP')
       .appendField(new Blockly.FieldNumber(1), 'VALUE');
+    this.appendValueInput('VALUE_VAR').setCheck(null).appendField('value variable');
     this.appendDummyInput()
       .appendField('Default if missing')
       .appendField(new Blockly.FieldNumber(0), 'DEFAULT');
+    this.appendValueInput('DEFAULT_VAR').setCheck(null).appendField('default variable');
     this.setOutput(true, 'npc_condition');
     this.setColour('#16a085');
     this.setTooltip('Compare a built-in per-player numeric memory value.');
@@ -1279,9 +1299,11 @@ Blockly.Blocks['npc_cond_memory_text'] = {
         ['≠', '~='],
       ]), 'OP')
       .appendField(new Blockly.FieldTextInput('done'), 'VALUE');
+    this.appendValueInput('VALUE_VAR').setCheck(null).appendField('value variable');
     this.appendDummyInput()
       .appendField('Default if missing')
       .appendField(new Blockly.FieldTextInput(''), 'DEFAULT');
+    this.appendValueInput('DEFAULT_VAR').setCheck(null).appendField('default variable');
     this.setOutput(true, 'npc_condition');
     this.setColour('#16a085');
     this.setTooltip('Compare a built-in per-player text memory value.');
@@ -1384,6 +1406,9 @@ Blockly.Blocks['npc_is_at_block'] = {
       .appendField(new Blockly.FieldNumber(0), 'Y')
       .appendField('Z')
       .appendField(new Blockly.FieldNumber(0), 'Z');
+    this.appendValueInput('X_VAR').setCheck(null).appendField('X variable');
+    this.appendValueInput('Y_VAR').setCheck(null).appendField('Y variable');
+    this.appendValueInput('Z_VAR').setCheck(null).appendField('Z variable');
     this.appendDummyInput()
       .appendField('At block →')
       .appendField(new Blockly.FieldTextInput('You are in position!'), 'SUCCESS');
@@ -1539,6 +1564,76 @@ function attachVarRefInput(block, inputName, varName) {
   return block;
 }
 
+const VAR_SYNC_BINDINGS = [
+  ['npc_hire', 'PRICE_VAR', 'PRICE', true],
+  ['npc_spawn_crew', 'PRICE_VAR', 'PRICE', true],
+  ['npc_sell_item', 'PRICE_VAR', 'PRICE', true],
+  ['npc_give_type', 'COUNT_VAR', 'COUNT', true],
+  ['npc_sqlite_set', 'VALUE_VAR', 'VALUE', false],
+  ['npc_sqlite_increment', 'AMOUNT_VAR', 'AMOUNT', true],
+  ['npc_memory_set', 'VALUE_VAR', 'VALUE', false],
+  ['npc_memory_increment', 'AMOUNT_VAR', 'AMOUNT', true],
+  ['npc_activate_block', 'X_VAR', 'X', true],
+  ['npc_activate_block', 'Y_VAR', 'Y', true],
+  ['npc_activate_block', 'Z_VAR', 'Z', true],
+  ['npc_move_to', 'X_VAR', 'X', true],
+  ['npc_move_to', 'Y_VAR', 'Y', true],
+  ['npc_move_to', 'Z_VAR', 'Z', true],
+  ['npc_is_at_block', 'X_VAR', 'X', true],
+  ['npc_is_at_block', 'Y_VAR', 'Y', true],
+  ['npc_is_at_block', 'Z_VAR', 'Z', true],
+  ['npc_check_credits', 'AMOUNT_VAR', 'AMOUNT', true],
+  ['npc_check_player_value', 'VALUE_VAR', 'VALUE', true],
+  ['npc_cond_player_value', 'VALUE_VAR', 'VALUE', true],
+  ['npc_cond_is_at_block', 'X_VAR', 'X', true],
+  ['npc_cond_is_at_block', 'Y_VAR', 'Y', true],
+  ['npc_cond_is_at_block', 'Z_VAR', 'Z', true],
+  ['npc_cond_sqlite_value', 'VALUE_VAR', 'VALUE', false],
+  ['npc_cond_sqlite_value', 'DEFAULT_VAR', 'DEFAULT', false],
+  ['npc_cond_sqlite_number', 'VALUE_VAR', 'VALUE', true],
+  ['npc_cond_sqlite_number', 'DEFAULT_VAR', 'DEFAULT', true],
+  ['npc_cond_sqlite_text', 'VALUE_VAR', 'VALUE', false],
+  ['npc_cond_sqlite_text', 'DEFAULT_VAR', 'DEFAULT', false],
+  ['npc_cond_memory_number', 'VALUE_VAR', 'VALUE', true],
+  ['npc_cond_memory_number', 'DEFAULT_VAR', 'DEFAULT', true],
+  ['npc_cond_memory_text', 'VALUE_VAR', 'VALUE', false],
+  ['npc_cond_memory_text', 'DEFAULT_VAR', 'DEFAULT', false],
+];
+
+let _syncingVarDisplays = false;
+function syncVariableDisplays() {
+  if (_syncingVarDisplays || !workspace?.getAllBlocks) return;
+  _syncingVarDisplays = true;
+  try {
+    const allBlocks = workspace.getAllBlocks(false);
+    const vars = new Map();
+    for (const b of allBlocks) {
+      if (b.type !== 'npc_lua_var') continue;
+      const name = String(b.getFieldValue('NAME') || '').trim();
+      if (!name) continue;
+      vars.set(name, {
+        value: String(b.getFieldValue('VALUE') || ''),
+        mode: b.getFieldValue('MODE') || 'raw',
+      });
+    }
+    for (const [type, inputName, fieldName, numeric] of VAR_SYNC_BINDINGS) {
+      for (const b of allBlocks) {
+        if (b.type !== type) continue;
+        const varName = getOptionalVarName(b, inputName);
+        if (!varName || !vars.has(varName)) continue;
+        const rawValue = vars.get(varName).value;
+        const parsedNum = Number(rawValue);
+        if (numeric && !Number.isFinite(parsedNum)) continue;
+        const nextValue = numeric ? String(parsedNum) : rawValue;
+        const field = b.getField(fieldName);
+        if (field && String(field.getValue()) !== String(nextValue)) field.setValue(nextValue);
+      }
+    }
+  } finally {
+    _syncingVarDisplays = false;
+  }
+}
+
 function getNode(vn) {
   return _state.nodes.find(n => n.varName === vn);
 }
@@ -1593,7 +1688,7 @@ function buildConditionExpression(block) {
     case 'npc_cond_player_value': {
       const valueType = block.getFieldValue('VALUE_TYPE');
       const op        = block.getFieldValue('OP');
-      const value     = block.getFieldValue('VALUE');
+      const value     = getOptionalVarName(block, 'VALUE_VAR') || block.getFieldValue('VALUE');
       const valueExprMap = {
         credits:   'dialogObject:getEntity():getCredits()',
         health:    'dialogObject:getEntity():getHealth()',
@@ -1616,9 +1711,9 @@ function buildConditionExpression(block) {
       return 'false';
     }
     case 'npc_cond_is_at_block': {
-      const x = block.getFieldValue('X');
-      const y = block.getFieldValue('Y');
-      const z = block.getFieldValue('Z');
+      const x = getOptionalVarName(block, 'X_VAR') || block.getFieldValue('X');
+      const y = getOptionalVarName(block, 'Y_VAR') || block.getFieldValue('Y');
+      const z = getOptionalVarName(block, 'Z_VAR') || block.getFieldValue('Z');
       return `(dialogObject:isAtBlock(${x}, ${y}, ${z}))`;
     }
     case 'npc_cond_custom': {
@@ -1629,8 +1724,8 @@ function buildConditionExpression(block) {
       const table = String(block.getFieldValue('TABLE') || 'quest_state').replace(/"/g, '\\"');
       const col   = String(block.getFieldValue('COL') || 'done').replace(/"/g, '\\"');
       const op    = block.getFieldValue('OP') || '==';
-      const value = block.getFieldValue('VALUE') || '1';
-      const def   = block.getFieldValue('DEFAULT') || '0';
+      const value = getOptionalVarName(block, 'VALUE_VAR') || block.getFieldValue('VALUE') || '1';
+      const def   = getOptionalVarName(block, 'DEFAULT_VAR') || block.getFieldValue('DEFAULT') || '0';
       return `(_dbGetPlayerValue("${table}", "${col}", dialogObject:getOwnName(), ${def}) ${op} ${value})`;
     }
     case 'npc_cond_sqlite_exists': {
@@ -1642,30 +1737,34 @@ function buildConditionExpression(block) {
       const table = String(block.getFieldValue('TABLE') || 'quest_state').replace(/"/g, '\\"');
       const col   = String(block.getFieldValue('COL') || 'step').replace(/"/g, '\\"');
       const op    = block.getFieldValue('OP') || '==';
-      const value = block.getFieldValue('VALUE') || 0;
-      const def   = block.getFieldValue('DEFAULT') || 0;
+      const value = getOptionalVarName(block, 'VALUE_VAR') || block.getFieldValue('VALUE') || 0;
+      const def   = getOptionalVarName(block, 'DEFAULT_VAR') || block.getFieldValue('DEFAULT') || 0;
       return `(_dbGetPlayerNumber("${table}", "${col}", dialogObject:getOwnName(), ${def}) ${op} ${value})`;
     }
     case 'npc_cond_sqlite_text': {
       const table = String(block.getFieldValue('TABLE') || 'quest_state').replace(/"/g, '\\"');
       const col   = String(block.getFieldValue('COL') || 'state').replace(/"/g, '\\"');
       const op    = block.getFieldValue('OP') || '==';
-      const value = luaStringLiteral(block.getFieldValue('VALUE') || 'done');
-      const def   = luaStringLiteral(block.getFieldValue('DEFAULT') || '');
+      const valueVar = getOptionalVarName(block, 'VALUE_VAR');
+      const defVar   = getOptionalVarName(block, 'DEFAULT_VAR');
+      const value = valueVar || luaStringLiteral(block.getFieldValue('VALUE') || 'done');
+      const def   = defVar || luaStringLiteral(block.getFieldValue('DEFAULT') || '');
       return `(_dbGetPlayerText("${table}", "${col}", dialogObject:getOwnName(), ${def}) ${op} ${value})`;
     }
     case 'npc_cond_memory_number': {
       const key   = String(block.getFieldValue('KEY') || 'quest_step').replace(/"/g, '\\"');
       const op    = block.getFieldValue('OP') || '==';
-      const value = block.getFieldValue('VALUE') || 0;
-      const def   = block.getFieldValue('DEFAULT') || 0;
+      const value = getOptionalVarName(block, 'VALUE_VAR') || block.getFieldValue('VALUE') || 0;
+      const def   = getOptionalVarName(block, 'DEFAULT_VAR') || block.getFieldValue('DEFAULT') || 0;
       return `(_memGetNumber(dialogObject:getOwnName(), "${key}", ${def}) ${op} ${value})`;
     }
     case 'npc_cond_memory_text': {
       const key   = String(block.getFieldValue('KEY') || 'quest_state').replace(/"/g, '\\"');
       const op    = block.getFieldValue('OP') || '==';
-      const value = luaStringLiteral(block.getFieldValue('VALUE') || 'done');
-      const def   = luaStringLiteral(block.getFieldValue('DEFAULT') || '');
+      const valueVar = getOptionalVarName(block, 'VALUE_VAR');
+      const defVar   = getOptionalVarName(block, 'DEFAULT_VAR');
+      const value = valueVar || luaStringLiteral(block.getFieldValue('VALUE') || 'done');
+      const def   = defVar || luaStringLiteral(block.getFieldValue('DEFAULT') || '');
       return `(_memGetText(dialogObject:getOwnName(), "${key}", ${def}) ${op} ${value})`;
     }
     case 'npc_cond_memory_exists': {
@@ -1846,11 +1945,11 @@ function processActionBlock(block, parentVarName) {
       return waitVn;
     }
     case 'npc_activate_block': {
-      const x = block.getFieldValue('X');
-      const y = block.getFieldValue('Y');
-      const z = block.getFieldValue('Z');
+      const x = getOptionalVarName(block, 'X_VAR') || block.getFieldValue('X');
+      const y = getOptionalVarName(block, 'Y_VAR') || block.getFieldValue('Y');
+      const z = getOptionalVarName(block, 'Z_VAR') || block.getFieldValue('Z');
       const st = block.getFieldValue('STATE');
-      const hookFn = `activateBlockHook_${x}_${y}_${z}`;
+      const hookFn = `activateBlockHook_${sanitizeIdentPart(x)}_${sanitizeIdentPart(y)}_${sanitizeIdentPart(z)}`;
       if (st === 'toggle') {
         registerHook(hookFn, [`return dialogObject:activateBlockSwitch(${x}, ${y}, ${z});`]);
       } else {
@@ -1864,10 +1963,10 @@ function processActionBlock(block, parentVarName) {
       return waitVn;
     }
     case 'npc_move_to': {
-      const x = block.getFieldValue('X');
-      const y = block.getFieldValue('Y');
-      const z = block.getFieldValue('Z');
-      const hookFn = `moveToHook_${x}_${y}_${z}`;
+      const x = getOptionalVarName(block, 'X_VAR') || block.getFieldValue('X');
+      const y = getOptionalVarName(block, 'Y_VAR') || block.getFieldValue('Y');
+      const z = getOptionalVarName(block, 'Z_VAR') || block.getFieldValue('Z');
+      const hookFn = `moveToHook_${sanitizeIdentPart(x)}_${sanitizeIdentPart(y)}_${sanitizeIdentPart(z)}`;
       registerHook(hookFn, [`return dialogObject:moveTo(${x}, ${y}, ${z});`]);
       const waitVn = makeNode('Moving...');
       const waitNode = getNode(waitVn);
@@ -1973,10 +2072,10 @@ function processActionBlock(block, parentVarName) {
       ], 'Checking condition...', success, fail);
     }
     case 'npc_check_credits': {
-      const amount  = block.getFieldValue('AMOUNT');
+      const amount  = getOptionalVarName(block, 'AMOUNT_VAR') || block.getFieldValue('AMOUNT');
       const success = block.getFieldValue('SUCCESS');
       const fail    = block.getFieldValue('FAIL');
-      const hookFn  = `checkCreditsHook_${amount}`;
+      const hookFn  = `checkCreditsHook_${sanitizeIdentPart(amount)}`;
       return makeBinaryConditionAction(hookFn, [
         `local ps = dialogObject:getEntity()`,
         `if ps == nil then return -1 end`,
@@ -1988,10 +2087,10 @@ function processActionBlock(block, parentVarName) {
     case 'npc_check_player_value': {
       const valueType = block.getFieldValue('VALUE_TYPE');
       const op        = block.getFieldValue('OP');
-      const value     = block.getFieldValue('VALUE');
+      const value     = getOptionalVarName(block, 'VALUE_VAR') || block.getFieldValue('VALUE');
       const success   = block.getFieldValue('SUCCESS');
       const fail      = block.getFieldValue('FAIL');
-      const hookFn    = `checkValueHook_${valueType}_${String(op).replace(/\W/g,'_')}_${value}`;
+      const hookFn    = `checkValueHook_${valueType}_${String(op).replace(/\W/g,'_')}_${sanitizeIdentPart(value)}`;
       const valueExprMap = {
         credits:   'ps:getCredits()',
         health:    'ps:getHealth()',
@@ -2070,12 +2169,12 @@ function processActionBlock(block, parentVarName) {
       return waitVn;
     }
     case 'npc_is_at_block': {
-      const x = block.getFieldValue('X');
-      const y = block.getFieldValue('Y');
-      const z = block.getFieldValue('Z');
+      const x = getOptionalVarName(block, 'X_VAR') || block.getFieldValue('X');
+      const y = getOptionalVarName(block, 'Y_VAR') || block.getFieldValue('Y');
+      const z = getOptionalVarName(block, 'Z_VAR') || block.getFieldValue('Z');
       const success = block.getFieldValue('SUCCESS');
       const fail    = block.getFieldValue('FAIL');
-      const hookFn  = `isAtBlockHook_${x}_${y}_${z}`;
+      const hookFn  = `isAtBlockHook_${sanitizeIdentPart(x)}_${sanitizeIdentPart(y)}_${sanitizeIdentPart(z)}`;
       registerHook(hookFn, [
         `if dialogObject:isAtBlock(${x}, ${y}, ${z}) then return 0 end`,
         `return -1`,
@@ -2853,7 +2952,7 @@ function parseLuaToBlocklyState(lua) {
     const rawVal = gv[2];
     globalVars.push({
       type: 'npc_lua_var',
-      x: 640,
+      x: 30,
       y: 40 + (globalVars.length * 88),
       fields: {
         NAME: gv[1],
@@ -3057,7 +3156,7 @@ function parseLuaToBlocklyState(lua) {
   // ── Step 5: Build Blockly state ───────────────────────────────────────────
   const rootNode = nodes[rootVar] || { text: '...', ms: 2000 };
   const greetingBlock = {
-    type: 'npc_greeting', x: 30, y: 30,
+    type: 'npc_greeting', x: 30, y: 40 + (globalVars.length * 88) + (globalVars.length ? 40 : 0),
     fields: { TEXT: stripBrackets(rootNode.text), MS: rootNode.ms }
   };
 
@@ -3350,12 +3449,12 @@ function buildActionBlock(funcName, body, boundParams, argDefs, constVals, react
     namedArgs[name] !== undefined ? parseInt(namedArgs[name]) :
     (boundParams[0] !== undefined && name === 'x' ? parseInt(boundParams[0]) : fallback);
 
-  const x = namedArgs['x'] !== undefined ? parseInt(namedArgs['x'])
-          : (boundParams.length >= 3 ? parseInt(boundParams[0]) : 0);
-  const y = namedArgs['y'] !== undefined ? parseInt(namedArgs['y'])
-          : (boundParams.length >= 3 ? parseInt(boundParams[1]) : 0);
-  const z = namedArgs['z'] !== undefined ? parseInt(namedArgs['z'])
-          : (boundParams.length >= 3 ? parseInt(boundParams[2]) : 0);
+  const xToken = namedArgs['x'] !== undefined ? namedArgs['x'] : (boundParams.length >= 3 ? boundParams[0] : '0');
+  const yToken = namedArgs['y'] !== undefined ? namedArgs['y'] : (boundParams.length >= 3 ? boundParams[1] : '0');
+  const zToken = namedArgs['z'] !== undefined ? namedArgs['z'] : (boundParams.length >= 3 ? boundParams[2] : '0');
+  const x = parseInt(xToken) || 0;
+  const y = parseInt(yToken) || 0;
+  const z = parseInt(zToken) || 0;
 
   const firstNum = (s) => { const m = s.match(/-?\d+/); return m ? parseInt(m[0]) : 0; };
   const firstCallArg = (body.match(/\(\s*([A-Za-z_]\w*|-?\d+(?:\.\d+)?)\s*\)/) || [])[1] || '';
@@ -3424,16 +3523,27 @@ function buildActionBlock(funcName, body, boundParams, argDefs, constVals, react
 
   // ── World actions ─────────────────────────────────────────────────────────
   if (/activateBlockSwitch/.test(body) || funcName.includes('Switch')) {
-    // bound params = {x,y,z}
-    return { type: 'npc_activate_block', fields: { X: x, Y: y, Z: z, STATE: 'toggle' } };
+    let block = { type: 'npc_activate_block', fields: { X: x, Y: y, Z: z, STATE: 'toggle' } };
+    block = attachVarRefInput(block, 'X_VAR', constVals?.[xToken] !== undefined ? xToken : '');
+    block = attachVarRefInput(block, 'Y_VAR', constVals?.[yToken] !== undefined ? yToken : '');
+    block = attachVarRefInput(block, 'Z_VAR', constVals?.[zToken] !== undefined ? zToken : '');
+    return block;
   }
   if (/activateBlock/.test(body) || funcName.includes('activateBlock')) {
     const stateVal = boundParams[3] || 'true';
     const state = stateVal === 'false' ? 'false' : 'true';
-    return { type: 'npc_activate_block', fields: { X: x, Y: y, Z: z, STATE: state } };
+    let block = { type: 'npc_activate_block', fields: { X: x, Y: y, Z: z, STATE: state } };
+    block = attachVarRefInput(block, 'X_VAR', constVals?.[xToken] !== undefined ? xToken : '');
+    block = attachVarRefInput(block, 'Y_VAR', constVals?.[yToken] !== undefined ? yToken : '');
+    block = attachVarRefInput(block, 'Z_VAR', constVals?.[zToken] !== undefined ? zToken : '');
+    return block;
   }
   if (/moveTo/.test(body) || funcName.includes('moveTo')) {
-    return { type: 'npc_move_to', fields: { X: x, Y: y, Z: z } };
+    let block = { type: 'npc_move_to', fields: { X: x, Y: y, Z: z } };
+    block = attachVarRefInput(block, 'X_VAR', constVals?.[xToken] !== undefined ? xToken : '');
+    block = attachVarRefInput(block, 'Y_VAR', constVals?.[yToken] !== undefined ? yToken : '');
+    block = attachVarRefInput(block, 'Z_VAR', constVals?.[zToken] !== undefined ? zToken : '');
+    return block;
   }
 
   // ── Tutorial call ─────────────────────────────────────────────────────────
@@ -3609,6 +3719,7 @@ const workspace = Blockly.inject('blocklyDiv', {
 
 // Auto-generate on change
 workspace.addChangeListener(() => {
+  syncVariableDisplays();
   if (workspace.getAllBlocks(false).some(b => b.type === 'npc_greeting')) {
     generateAndShow();
   }
