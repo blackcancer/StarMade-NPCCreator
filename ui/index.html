@@ -196,6 +196,7 @@
   <button class="btn btn-secondary" onclick="loadExample()" title="Load a built-in example">📄 Example</button>
   <button class="btn btn-secondary" onclick="loadWorkspace()" title="Load a saved workspace (.json)">📂 Load</button>
   <button class="btn btn-secondary" onclick="saveWorkspace()" title="Save the current workspace as .json">💾 Save</button>
+  <button class="btn btn-secondary" onclick="createMissingVariables()" title="Create missing Variable blocks for connected references">🧮 Create missing vars</button>
   <button class="btn btn-primary" onclick="generateAndShow()" title="Generate Lua script from blocks">▶ Generate Lua</button>
   <button class="btn btn-success" onclick="copyLua()" title="Copy Lua to clipboard">📋 Copy</button>
   <button class="btn btn-success" onclick="downloadLua()" title="Download the generated .lua file">⬇ Download .lua</button>
@@ -1680,6 +1681,46 @@ function getMissingConnectedVariables(allBlocks) {
     if (name && !vars.has(name)) missing.add(name);
   }
   return Array.from(missing).sort((a, b) => a.localeCompare(b));
+}
+
+function createMissingVariables() {
+  if (!workspace?.getAllBlocks || !workspace?.newBlock) return;
+  const allBlocks = workspace.getAllBlocks(false);
+  const missing = getMissingConnectedVariables(allBlocks);
+  if (missing.length === 0) {
+    document.getElementById('statusBar').textContent = 'No missing variables to create.';
+    return;
+  }
+
+  const existingVars = allBlocks.filter(b => b.type === 'npc_lua_var');
+  const greetings = allBlocks.filter(b => b.type === 'npc_greeting');
+  const baseX = 30;
+  let nextY = existingVars.length > 0
+    ? Math.max(...existingVars.map(b => (b.getRelativeToSurfaceXY ? b.getRelativeToSurfaceXY().y : 40))) + 88
+    : 40;
+
+  for (const name of missing) {
+    const block = workspace.newBlock('npc_lua_var');
+    block.setFieldValue(name, 'NAME');
+    block.setFieldValue('raw', 'MODE');
+    block.setFieldValue('0', 'VALUE');
+    if (block.initSvg) block.initSvg();
+    if (block.render) block.render();
+    if (block.moveBy) block.moveBy(baseX, nextY);
+    nextY += 88;
+  }
+
+  const minGreetingY = nextY + 40;
+  for (const g of greetings) {
+    if (!g.getRelativeToSurfaceXY || !g.moveBy) continue;
+    const pos = g.getRelativeToSurfaceXY();
+    if (pos.y < minGreetingY) g.moveBy(0, minGreetingY - pos.y);
+  }
+
+  syncVariableDisplays();
+  updateVariableReferenceWarnings();
+  generateAndShow();
+  document.getElementById('statusBar').textContent = `Created ${missing.length} missing variable(s): ${missing.join(', ')}`;
 }
 
 function getNode(vn) {
