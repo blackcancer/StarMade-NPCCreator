@@ -289,6 +289,7 @@
   </category>
   <category name="🔗 Sequences" colour="#e67e22">
     <block type="npc_auto_sequence"></block>
+    <block type="npc_wait_until"></block>
   </category>
   <category name="💾 SQLite" colour="#3498db">
     <block type="npc_sqlite_table"></block>
@@ -297,11 +298,20 @@
     <block type="npc_sqlite_increment"></block>
   </category>
   <category name="✅ Conditions" colour="#16a085">
+    <block type="npc_if_condition"></block>
     <block type="npc_check_credits"></block>
     <block type="npc_check_player_value"></block>
     <block type="npc_check_flag"></block>
     <block type="npc_is_at_block"></block>
     <block type="npc_check_custom_condition"></block>
+    <sep></sep>
+    <block type="npc_cond_player_value"></block>
+    <block type="npc_cond_flag"></block>
+    <block type="npc_cond_is_at_block"></block>
+    <block type="npc_cond_custom"></block>
+    <block type="npc_cond_and"></block>
+    <block type="npc_cond_or"></block>
+    <block type="npc_cond_not"></block>
   </category>
   <category name="🔧 Advanced" colour="#e74c3c">
     <block type="npc_custom_hook"></block>
@@ -592,6 +602,29 @@ Blockly.Blocks['npc_auto_sequence'] = {
   }
 };
 
+// ── npc_wait_until ────────────────────────────────────────────────────────────
+Blockly.Blocks['npc_wait_until'] = {
+  init() {
+    this.appendValueInput('COND').setCheck('npc_condition').appendField('⏳ Wait until');
+    this.appendDummyInput()
+      .appendField('While false show')
+      .appendField(new Blockly.FieldTextInput('Waiting...'), 'WAIT');
+    this.appendDummyInput()
+      .appendField('When true show')
+      .appendField(new Blockly.FieldTextInput('Done!'), 'SUCCESS');
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour('#e67e22');
+    this.setTooltip(
+      'WAIT UNTIL\nLoop on the same dialog node until the condition becomes true.\n\n' +
+      'Generated behavior:\n' +
+      '  return 0  → exit loop and continue\n' +
+      '  return -1 → stay on the same node and check again\n\n' +
+      'This matches vanilla tutorial-style polling behavior.'
+    );
+  }
+};
+
 // ── npc_activate_block ────────────────────────────────────────────────────────
 Blockly.Blocks['npc_activate_block'] = {
   init() {
@@ -777,6 +810,27 @@ Blockly.Blocks['npc_give_meta_item'] = {
   }
 };
 
+// ── npc_if_condition ──────────────────────────────────────────────────────────
+Blockly.Blocks['npc_if_condition'] = {
+  init() {
+    this.appendValueInput('COND').setCheck('npc_condition').appendField('🔀 If condition');
+    this.appendDummyInput()
+      .appendField('If true →')
+      .appendField(new Blockly.FieldTextInput('Condition met.'), 'SUCCESS');
+    this.appendDummyInput()
+      .appendField('If false →')
+      .appendField(new Blockly.FieldTextInput('Condition failed.'), 'FAIL');
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour('#16a085');
+    this.setTooltip(
+      'IF CONDITION\nEvaluate any condition block once and branch to success/fail text.\n\n' +
+      'Use this when you want a single yes/no check.\n' +
+      'For repeated polling, use Wait Until.'
+    );
+  }
+};
+
 // ── npc_check_credits ─────────────────────────────────────────────────────────
 Blockly.Blocks['npc_check_credits'] = {
   init() {
@@ -901,6 +955,115 @@ Blockly.Blocks['npc_check_custom_condition'] = {
       '  if (<expr>) then return 0 end\n' +
       '  return -1'
     );
+  }
+};
+
+// ── npc_cond_player_value ────────────────────────────────────────────────────
+Blockly.Blocks['npc_cond_player_value'] = {
+  init() {
+    this.appendDummyInput()
+      .appendField('Player')
+      .appendField(new Blockly.FieldDropdown([
+        ['Credits', 'credits'],
+        ['Health', 'health'],
+        ['Max Health', 'maxHealth'],
+        ['Faction ID', 'factionId'],
+        ['Sector ID', 'sectorId'],
+      ]), 'VALUE_TYPE')
+      .appendField(new Blockly.FieldDropdown([
+        ['≥', '>='],
+        ['>',  '>'],
+        ['=',  '=='],
+        ['≠',  '~='],
+        ['≤',  '<='],
+        ['<',  '<'],
+      ]), 'OP')
+      .appendField(new Blockly.FieldNumber(0), 'VALUE');
+    this.setOutput(true, 'npc_condition');
+    this.setColour('#16a085');
+    this.setTooltip('Condition expression based on a numeric player value.');
+  }
+};
+
+// ── npc_cond_flag ────────────────────────────────────────────────────────────
+Blockly.Blocks['npc_cond_flag'] = {
+  init() {
+    this.appendDummyInput()
+      .appendField('Flag')
+      .appendField(new Blockly.FieldDropdown([
+        ['Player creative mode', 'creative'],
+        ['NPC already in team', 'inTeam'],
+      ]), 'FLAG')
+      .appendField('is')
+      .appendField(new Blockly.FieldDropdown([
+        ['true', 'true'],
+        ['false', 'false'],
+      ]), 'EXPECT');
+    this.setOutput(true, 'npc_condition');
+    this.setColour('#16a085');
+    this.setTooltip('Boolean condition block.');
+  }
+};
+
+// ── npc_cond_is_at_block ─────────────────────────────────────────────────────
+Blockly.Blocks['npc_cond_is_at_block'] = {
+  init() {
+    this.appendDummyInput()
+      .appendField('At block X')
+      .appendField(new Blockly.FieldNumber(0), 'X')
+      .appendField('Y')
+      .appendField(new Blockly.FieldNumber(0), 'Y')
+      .appendField('Z')
+      .appendField(new Blockly.FieldNumber(0), 'Z');
+    this.setOutput(true, 'npc_condition');
+    this.setColour('#16a085');
+    this.setTooltip('True when dialogObject:isAtBlock(x, y, z) is true.');
+  }
+};
+
+// ── npc_cond_custom ──────────────────────────────────────────────────────────
+Blockly.Blocks['npc_cond_custom'] = {
+  init() {
+    this.appendDummyInput()
+      .appendField('Lua condition')
+      .appendField(new Blockly.FieldTextInput('dialogObject:isConverationPartnerInTeam()'), 'EXPR');
+    this.setOutput(true, 'npc_condition');
+    this.setColour('#16a085');
+    this.setTooltip('Raw Lua boolean expression used as a condition.');
+  }
+};
+
+// ── npc_cond_and ─────────────────────────────────────────────────────────────
+Blockly.Blocks['npc_cond_and'] = {
+  init() {
+    this.appendValueInput('A').setCheck('npc_condition').appendField('(');
+    this.appendValueInput('B').setCheck('npc_condition').appendField('AND');
+    this.appendDummyInput().appendField(')');
+    this.setOutput(true, 'npc_condition');
+    this.setColour('#16a085');
+    this.setTooltip('Logical AND between two conditions.');
+  }
+};
+
+// ── npc_cond_or ──────────────────────────────────────────────────────────────
+Blockly.Blocks['npc_cond_or'] = {
+  init() {
+    this.appendValueInput('A').setCheck('npc_condition').appendField('(');
+    this.appendValueInput('B').setCheck('npc_condition').appendField('OR');
+    this.appendDummyInput().appendField(')');
+    this.setOutput(true, 'npc_condition');
+    this.setColour('#16a085');
+    this.setTooltip('Logical OR between two conditions.');
+  }
+};
+
+// ── npc_cond_not ─────────────────────────────────────────────────────────────
+Blockly.Blocks['npc_cond_not'] = {
+  init() {
+    this.appendValueInput('COND').setCheck('npc_condition').appendField('NOT');
+    this.setOutput(true, 'npc_condition');
+    this.setColour('#16a085');
+    this.setTooltip('Logical NOT for a condition.');
   }
 };
 
@@ -1087,6 +1250,63 @@ function makeBinaryConditionAction(hookFn, bodyLines, waitText, successText, fai
     { code: -1, target: failVn },
   ];
   return waitVn;
+}
+
+function buildConditionExpression(block) {
+  if (!block) return 'false';
+  switch (block.type) {
+    case 'npc_cond_player_value': {
+      const valueType = block.getFieldValue('VALUE_TYPE');
+      const op        = block.getFieldValue('OP');
+      const value     = block.getFieldValue('VALUE');
+      const valueExprMap = {
+        credits:   'dialogObject:getEntity():getCredits()',
+        health:    'dialogObject:getEntity():getHealth()',
+        maxHealth: 'dialogObject:getEntity():getMaxHealth()',
+        factionId: 'dialogObject:getEntity():getFactionId()',
+        sectorId:  'dialogObject:getEntity():getCurrentSectorId()',
+      };
+      const valueExpr = valueExprMap[valueType] || 'dialogObject:getEntity():getCredits()';
+      return `(dialogObject:getEntity() ~= nil and (${valueExpr} ${op} ${value}))`;
+    }
+    case 'npc_cond_flag': {
+      const flag   = block.getFieldValue('FLAG');
+      const expect = block.getFieldValue('EXPECT') === 'true' ? 'true' : 'false';
+      if (flag === 'creative') {
+        return `(dialogObject:getEntity() ~= nil and dialogObject:getEntity():isCreativeModeEnabled() == ${expect})`;
+      }
+      if (flag === 'inTeam') {
+        return `(dialogObject:isConverationPartnerInTeam() == ${expect})`;
+      }
+      return 'false';
+    }
+    case 'npc_cond_is_at_block': {
+      const x = block.getFieldValue('X');
+      const y = block.getFieldValue('Y');
+      const z = block.getFieldValue('Z');
+      return `(dialogObject:isAtBlock(${x}, ${y}, ${z}))`;
+    }
+    case 'npc_cond_custom': {
+      const expr = block.getFieldValue('EXPR') || 'false';
+      return `(${expr})`;
+    }
+    case 'npc_cond_and': {
+      const a = buildConditionExpression(block.getInputTargetBlock('A'));
+      const b = buildConditionExpression(block.getInputTargetBlock('B'));
+      return `((${a}) and (${b}))`;
+    }
+    case 'npc_cond_or': {
+      const a = buildConditionExpression(block.getInputTargetBlock('A'));
+      const b = buildConditionExpression(block.getInputTargetBlock('B'));
+      return `((${a}) or (${b}))`;
+    }
+    case 'npc_cond_not': {
+      const expr = buildConditionExpression(block.getInputTargetBlock('COND'));
+      return `(not (${expr}))`;
+    }
+    default:
+      return 'false';
+  }
 }
 
 function makeSellAction(item, price, parentVarName) {
@@ -1296,6 +1516,25 @@ function processActionBlock(block, parentVarName) {
       waitNode.reactions = [{ code: 0, target: successVn }];
       return waitVn;
     }
+    case 'npc_wait_until': {
+      const condBlock = block.getInputTargetBlock('COND');
+      const expr      = buildConditionExpression(condBlock);
+      const waitText  = block.getFieldValue('WAIT');
+      const success   = block.getFieldValue('SUCCESS');
+      const hookFn    = `waitUntilHook_${Math.abs(hashCode(expr))}`;
+      registerHook(hookFn, [
+        `-- NPCC_WAIT_UNTIL`,
+        `local _cond = ${expr}`,
+        `if _cond then return 0 end`,
+        `return -1`,
+      ]);
+      const waitVn    = makeNode(waitText || 'Waiting...');
+      const successVn = makeNode(success || 'Done!');
+      const waitNode  = getNode(waitVn);
+      waitNode.hook = hookFn;
+      waitNode.reactions = [{ code: 0, target: successVn }, { code: -1, target: waitVn }];
+      return waitVn;
+    }
     case 'npc_give_meta_item': {
       const metaType  = block.getFieldValue('META_TYPE');
       const subType   = block.getFieldValue('SUB_TYPE');
@@ -1313,6 +1552,19 @@ function processActionBlock(block, parentVarName) {
       waitNode.hook = hookFn;
       waitNode.reactions = [{ code: 0, target: successVn }, { code: -1, target: failVn }];
       return waitVn;
+    }
+    case 'npc_if_condition': {
+      const condBlock = block.getInputTargetBlock('COND');
+      const expr      = buildConditionExpression(condBlock);
+      const success   = block.getFieldValue('SUCCESS');
+      const fail      = block.getFieldValue('FAIL');
+      const hookFn    = `ifConditionHook_${Math.abs(hashCode(expr))}`;
+      return makeBinaryConditionAction(hookFn, [
+        `-- NPCC_IF_CONDITION`,
+        `local _cond = ${expr}`,
+        `if _cond then return 0 end`,
+        `return -1`,
+      ], 'Checking condition...', success, fail);
     }
     case 'npc_check_credits': {
       const amount  = block.getFieldValue('AMOUNT');
@@ -2159,6 +2411,114 @@ function stripBrackets(t) {
   return (t.startsWith('[') && t.endsWith(']')) ? t.slice(1, -1) : t;
 }
 
+function stripOuterParensExpr(expr) {
+  expr = (expr || '').trim();
+  while (expr.startsWith('(') && expr.endsWith(')')) {
+    let depth = 0;
+    let wraps = true;
+    for (let i = 0; i < expr.length; i++) {
+      const ch = expr[i];
+      if (ch === '(') depth++;
+      else if (ch === ')') depth--;
+      if (depth === 0 && i < expr.length - 1) { wraps = false; break; }
+    }
+    if (!wraps) break;
+    expr = expr.slice(1, -1).trim();
+  }
+  return expr;
+}
+
+function splitTopLevelBool(expr, op) {
+  let depth = 0;
+  let inString = false;
+  for (let i = 0; i < expr.length; i++) {
+    const ch = expr[i];
+    if (ch === '"' && expr[i - 1] !== '\\') inString = !inString;
+    if (inString) continue;
+    if (ch === '(') depth++;
+    else if (ch === ')') depth--;
+    if (depth === 0 && expr.slice(i, i + op.length + 2) === ` ${op} `) {
+      return [expr.slice(0, i).trim(), expr.slice(i + op.length + 2).trim()];
+    }
+  }
+  return null;
+}
+
+function buildConditionBlockFromExpression(expr) {
+  expr = stripOuterParensExpr(expr || 'false');
+
+  let m = expr.match(/^dialogObject:getEntity\(\)\s*~=\s*nil\s+and\s+(.+)$/);
+  if (m) return buildConditionBlockFromExpression(m[1]);
+
+  if (expr.startsWith('not ')) {
+    return {
+      type: 'npc_cond_not',
+      inputs: { COND: { block: buildConditionBlockFromExpression(expr.slice(4).trim()) } }
+    };
+  }
+
+  const andParts = splitTopLevelBool(expr, 'and');
+  if (andParts) {
+    return {
+      type: 'npc_cond_and',
+      inputs: {
+        A: { block: buildConditionBlockFromExpression(andParts[0]) },
+        B: { block: buildConditionBlockFromExpression(andParts[1]) },
+      }
+    };
+  }
+
+  const orParts = splitTopLevelBool(expr, 'or');
+  if (orParts) {
+    return {
+      type: 'npc_cond_or',
+      inputs: {
+        A: { block: buildConditionBlockFromExpression(orParts[0]) },
+        B: { block: buildConditionBlockFromExpression(orParts[1]) },
+      }
+    };
+  }
+
+  m = expr.match(/^dialogObject:getEntity\(\):(getCredits|getHealth|getMaxHealth|getFactionId|getCurrentSectorId)\(\)\s*(>=|<=|==|~=|>|<)\s*(-?\d+(?:\.\d+)?)$/);
+  if (m) {
+    const methodToType = {
+      getCredits: 'credits',
+      getHealth: 'health',
+      getMaxHealth: 'maxHealth',
+      getFactionId: 'factionId',
+      getCurrentSectorId: 'sectorId',
+    };
+    return {
+      type: 'npc_cond_player_value',
+      fields: {
+        VALUE_TYPE: methodToType[m[1]] || 'credits',
+        OP: m[2],
+        VALUE: Number(m[3]),
+      }
+    };
+  }
+
+  m = expr.match(/^dialogObject:getEntity\(\):isCreativeModeEnabled\(\)\s*==\s*(true|false)$/);
+  if (m) {
+    return { type: 'npc_cond_flag', fields: { FLAG: 'creative', EXPECT: m[1] } };
+  }
+
+  m = expr.match(/^dialogObject:isConverationPartnerInTeam\(\)\s*==\s*(true|false)$/);
+  if (m) {
+    return { type: 'npc_cond_flag', fields: { FLAG: 'inTeam', EXPECT: m[1] } };
+  }
+
+  m = expr.match(/^dialogObject:isAtBlock\(\s*(-?\d+)\s*,\s*(-?\d+)\s*,\s*(-?\d+)\s*\)$/);
+  if (m) {
+    return {
+      type: 'npc_cond_is_at_block',
+      fields: { X: parseInt(m[1]), Y: parseInt(m[2]), Z: parseInt(m[3]) }
+    };
+  }
+
+  return { type: 'npc_cond_custom', fields: { EXPR: expr } };
+}
+
 // ── Build a linked chain of choice blocks ─────────────────────────────────────
 function buildChoiceChain(list, nodes, hookOf, hookInsts, hookBodies, hookArgDefs, choiceMap, visited) {
   visited = visited || new Set();
@@ -2322,6 +2682,24 @@ function buildActionBlock(funcName, body, boundParams, argDefs) {
   }
 
   // ── Conditions ────────────────────────────────────────────────────────────
+  const ifExprM = body.match(/--\s*NPCC_IF_CONDITION[\s\S]*?local\s+_cond\s*=\s*([\s\S]*?)\n\s*if\s+_cond\s+then\s+return\s+0\s+end/);
+  if (ifExprM) {
+    return {
+      type: 'npc_if_condition',
+      fields: { SUCCESS: 'Condition met.', FAIL: 'Condition failed.' },
+      inputs: { COND: { block: buildConditionBlockFromExpression(ifExprM[1].trim()) } }
+    };
+  }
+
+  const waitExprM = body.match(/--\s*NPCC_WAIT_UNTIL[\s\S]*?local\s+_cond\s*=\s*([\s\S]*?)\n\s*if\s+_cond\s+then\s+return\s+0\s+end/);
+  if (waitExprM) {
+    return {
+      type: 'npc_wait_until',
+      fields: { WAIT: 'Waiting...', SUCCESS: 'Done!' },
+      inputs: { COND: { block: buildConditionBlockFromExpression(waitExprM[1].trim()) } }
+    };
+  }
+
   const creditM = body.match(/local\s+credits\s*=\s*ps:getCredits\(\)[\s\S]*?if\s+credits\s*>=\s*(-?\d+(?:\.\d+)?)\s+then\s+return\s+0\s+end/);
   if (creditM) {
     return {
