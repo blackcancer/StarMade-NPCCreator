@@ -229,6 +229,7 @@
 
 <span style="color:#8e44ad">🧮 Variables</span>
   Variable       — floating global Lua variable / constant
+  Var reference  — optional connector for supported blocks
 
 <span style="color:#27ae60">👥 Crew Actions</span>
   Hire Crew      — player pays to hire this NPC
@@ -276,6 +277,7 @@
   </category>
   <category name="🧮 Variables" colour="#8e44ad">
     <block type="npc_lua_var"></block>
+    <block type="npc_var_ref"></block>
   </category>
   <category name="👥 Crew" colour="#27ae60">
     <block type="npc_hire"></block>
@@ -378,6 +380,21 @@ Blockly.Blocks['npc_lua_var'] = {
   }
 };
 
+// ── npc_var_ref ──────────────────────────────────────────────────────────────
+Blockly.Blocks['npc_var_ref'] = {
+  init() {
+    this.appendDummyInput()
+      .appendField('🔗 Var')
+      .appendField(new Blockly.FieldTextInput('priceLaser'), 'NAME');
+    this.setOutput(true, null);
+    this.setColour('#8e44ad');
+    this.setTooltip(
+      'VARIABLE REFERENCE\nReference a global variable by name.\n\n' +
+      'Connect it into an optional "var" input on supported blocks to emit the variable name instead of a literal value.'
+    );
+  }
+};
+
 // ── npc_greeting ─────────────────────────────────────────────────────────────
 Blockly.Blocks['npc_greeting'] = {
   init() {
@@ -444,6 +461,7 @@ Blockly.Blocks['npc_hire'] = {
       .appendField('🤝 Hire crew — price')
       .appendField(new Blockly.FieldNumber(50000, 0), 'PRICE')
       .appendField('credits');
+    this.appendValueInput('PRICE_VAR').setCheck(null).appendField('or variable');
     this.appendDummyInput().appendField('Success text')
       .appendField(new Blockly.FieldTextInput("I'm honoured to work with you!"), 'SUCCESS');
     this.setPreviousStatement(true, null);
@@ -482,6 +500,7 @@ Blockly.Blocks['npc_spawn_crew'] = {
       .appendField('➕ Spawn crew — price')
       .appendField(new Blockly.FieldNumber(50000, 0), 'PRICE')
       .appendField('credits');
+    this.appendValueInput('PRICE_VAR').setCheck(null).appendField('or variable');
     this.setPreviousStatement(true, null);
     this.setNextStatement(true, null);
     this.setColour('#27ae60');
@@ -515,6 +534,7 @@ Blockly.Blocks['npc_sell_item'] = {
       .appendField('—')
       .appendField(new Blockly.FieldNumber(100000, 0), 'PRICE')
       .appendField('credits');
+    this.appendValueInput('PRICE_VAR').setCheck(null).appendField('or variable');
     this.setPreviousStatement(true, null);
     this.setNextStatement(true, null);
     this.setColour('#f39c12');
@@ -539,6 +559,7 @@ Blockly.Blocks['npc_give_type'] = {
       .appendField(new Blockly.FieldNumber(1, 1), 'COUNT')
       .appendField('free? ')
       .appendField(new Blockly.FieldCheckbox('TRUE'), 'FREE');
+    this.appendValueInput('COUNT_VAR').setCheck(null).appendField('count variable');
     this.setPreviousStatement(true, null);
     this.setNextStatement(true, null);
     this.setColour('#f39c12');
@@ -775,6 +796,7 @@ Blockly.Blocks['npc_sqlite_set'] = {
       .appendField(new Blockly.FieldTextInput('done'), 'COL')
       .appendField('= value')
       .appendField(new Blockly.FieldTextInput('"1"'), 'VALUE');
+    this.appendValueInput('VALUE_VAR').setCheck(null).appendField('or variable');
     this.setPreviousStatement(true, null);
     this.setNextStatement(true, null);
     this.setColour('#3498db');
@@ -797,6 +819,7 @@ Blockly.Blocks['npc_sqlite_increment'] = {
       .appendField(new Blockly.FieldTextInput('count'), 'COL')
       .appendField('by')
       .appendField(new Blockly.FieldNumber(1, 1), 'AMOUNT');
+    this.appendValueInput('AMOUNT_VAR').setCheck(null).appendField('or variable');
     this.setPreviousStatement(true, null);
     this.setNextStatement(true, null);
     this.setColour('#3498db');
@@ -823,6 +846,7 @@ Blockly.Blocks['npc_memory_set'] = {
       ]), 'MODE')
       .appendField('value')
       .appendField(new Blockly.FieldTextInput('done'), 'VALUE');
+    this.appendValueInput('VALUE_VAR').setCheck(null).appendField('or variable');
     this.setPreviousStatement(true, null);
     this.setNextStatement(true, null);
     this.setColour('#3498db');
@@ -845,6 +869,7 @@ Blockly.Blocks['npc_memory_increment'] = {
       .appendField(new Blockly.FieldTextInput('quest_step'), 'KEY')
       .appendField('by')
       .appendField(new Blockly.FieldNumber(1), 'AMOUNT');
+    this.appendValueInput('AMOUNT_VAR').setCheck(null).appendField('or variable');
     this.setPreviousStatement(true, null);
     this.setNextStatement(true, null);
     this.setColour('#3498db');
@@ -1492,6 +1517,28 @@ function luaVarLiteral(mode, value) {
   return String(value || 'nil');
 }
 
+function sanitizeIdentPart(value) {
+  return String(value || '').replace(/\W+/g, '_').replace(/^_+|_+$/g, '') || 'value';
+}
+
+function getOptionalVarName(block, inputName) {
+  const child = block?.getInputTargetBlock ? block.getInputTargetBlock(inputName) : null;
+  if (!child || child.type !== 'npc_var_ref') return '';
+  return String(child.getFieldValue('NAME') || '').trim();
+}
+
+function serializedVarRef(varName) {
+  if (!varName) return null;
+  return { block: { type: 'npc_var_ref', fields: { NAME: varName } } };
+}
+
+function attachVarRefInput(block, inputName, varName) {
+  if (!varName) return block;
+  block.inputs = block.inputs || {};
+  block.inputs[inputName] = serializedVarRef(varName);
+  return block;
+}
+
 function getNode(vn) {
   return _state.nodes.find(n => n.varName === vn);
 }
@@ -1649,8 +1696,8 @@ function luaStringLiteral(s) {
   return `"${String(s ?? '').replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
 }
 
-function makeSellAction(item, price, parentVarName, meta = {}) {
-  const hookFn = `give_${item}_${price}_Hook`;
+function makeSellAction(item, priceExpr, parentVarName, meta = {}) {
+  const hookFn = `give_${item}_${sanitizeIdentPart(priceExpr)}_Hook`;
   const methodMap = {
     laser: 'giveLaserWeapon', sniper: 'giveSniperRifle',
     rocket: 'giveRocketLauncher', helmet: 'giveHelmet',
@@ -1659,7 +1706,7 @@ function makeSellAction(item, price, parentVarName, meta = {}) {
     grapple: 'giveGrappleBeam', torch: 'giveTorchBeam',
     prohibiter: 'giveBuildProhibiter', flashlight: 'giveFlashLight',
   };
-  registerHook(hookFn, [`return dialogObject:${methodMap[item]}(${price});`]);
+  registerHook(hookFn, [`return dialogObject:${methodMap[item]}(${priceExpr});`]);
 
   const waitVn    = makeNode(meta.waitText || 'Please wait...');
   const successVn = makeNode(reactionText(meta, 0, 'Thank you!'));
@@ -1676,8 +1723,8 @@ function makeSellAction(item, price, parentVarName, meta = {}) {
   return waitVn;
 }
 
-function makeHireAction(price, successText, meta = {}) {
-  const hookFn = `hireHookFunc_${price}`;
+function makeHireAction(priceExpr, successText, meta = {}) {
+  const hookFn = `hireHookFunc_${sanitizeIdentPart(priceExpr)}`;
   registerHook(hookFn, [`return dialogObject:hireConverationPartner();`]);
   const waitVn    = makeNode(meta.waitText || 'Please wait...');
   const successVn = makeNode(successText || reactionText(meta, 0, "I'm honoured!"));
@@ -1758,7 +1805,7 @@ function processActionBlock(block, parentVarName) {
   const meta = readBlockData(block);
   switch (block.type) {
     case 'npc_hire': {
-      const price   = block.getFieldValue('PRICE');
+      const price   = getOptionalVarName(block, 'PRICE_VAR') || block.getFieldValue('PRICE');
       const success = block.getFieldValue('SUCCESS');
       return makeHireAction(price, success, meta);
     }
@@ -1767,8 +1814,8 @@ function processActionBlock(block, parentVarName) {
       return makeUnhireAction(success, meta);
     }
     case 'npc_spawn_crew': {
-      const price  = block.getFieldValue('PRICE');
-      const hookFn = `spawnCrewHook_${price}`;
+      const price  = getOptionalVarName(block, 'PRICE_VAR') || block.getFieldValue('PRICE');
+      const hookFn = `spawnCrewHook_${sanitizeIdentPart(price)}`;
       registerHook(hookFn, [`return dialogObject:spawnCrew(${price});`]);
       const waitVn = makeNode(meta.waitText || 'Please wait...');
       const successVn = makeNode(reactionText(meta, 0, 'Welcome!'));
@@ -1781,13 +1828,13 @@ function processActionBlock(block, parentVarName) {
     }
     case 'npc_sell_item': {
       const item  = block.getFieldValue('ITEM');
-      const price = block.getFieldValue('PRICE');
+      const price = getOptionalVarName(block, 'PRICE_VAR') || block.getFieldValue('PRICE');
       return makeSellAction(item, price, parentVarName, meta);
     }
     case 'npc_give_type': {
       const typeId = block.getFieldValue('TYPE_ID');
-      const count  = block.getFieldValue('COUNT');
-      const hookFn = `giveTypeHook_${typeId}_${count}`;
+      const count  = getOptionalVarName(block, 'COUNT_VAR') || block.getFieldValue('COUNT');
+      const hookFn = `giveTypeHook_${sanitizeIdentPart(typeId)}_${sanitizeIdentPart(count)}`;
       registerHook(hookFn, [`return dialogObject:giveType(${typeId}, ${count});`]);
       const waitVn = makeNode(meta.waitText || 'Please wait...');
       const successVn = makeNode(reactionText(meta, 0, 'Here you go!'));
@@ -2062,7 +2109,7 @@ function processActionBlock(block, parentVarName) {
     case 'npc_sqlite_set': {
       const table = block.getFieldValue('TABLE');
       const col   = block.getFieldValue('COL');
-      const value = block.getFieldValue('VALUE');
+      const value = getOptionalVarName(block, 'VALUE_VAR') || block.getFieldValue('VALUE');
       const hookFn = `sqliteSetHook_${table}_${col}`;
       registerHook(hookFn, [
         `local player = dialogObject:getOwnName()`,
@@ -2079,7 +2126,7 @@ function processActionBlock(block, parentVarName) {
     case 'npc_sqlite_increment': {
       const table  = block.getFieldValue('TABLE');
       const col    = block.getFieldValue('COL');
-      const amount = block.getFieldValue('AMOUNT');
+      const amount = getOptionalVarName(block, 'AMOUNT_VAR') || block.getFieldValue('AMOUNT');
       const hookFn = `sqliteIncrHook_${table}_${col}`;
       registerHook(hookFn, [
         `local player = dialogObject:getOwnName()`,
@@ -2096,9 +2143,11 @@ function processActionBlock(block, parentVarName) {
     case 'npc_memory_set': {
       const key   = block.getFieldValue('KEY');
       const mode  = block.getFieldValue('MODE');
-      const value = block.getFieldValue('VALUE');
+      const value = getOptionalVarName(block, 'VALUE_VAR') || block.getFieldValue('VALUE');
       const hookFn = `memorySetHook_${String(key).replace(/\W/g,'_')}`;
-      const luaVal = mode === 'text' ? luaStringLiteral(value)
+      const usingVar = !!getOptionalVarName(block, 'VALUE_VAR');
+      const luaVal = usingVar ? String(value || 'nil')
+                   : mode === 'text' ? luaStringLiteral(value)
                    : mode === 'number' ? String(Number(value) || 0)
                    : String(value || 'nil');
       registerHook(hookFn, [
@@ -2115,7 +2164,7 @@ function processActionBlock(block, parentVarName) {
     }
     case 'npc_memory_increment': {
       const key    = block.getFieldValue('KEY');
-      const amount = block.getFieldValue('AMOUNT');
+      const amount = getOptionalVarName(block, 'AMOUNT_VAR') || block.getFieldValue('AMOUNT');
       const hookFn = `memoryIncrHook_${String(key).replace(/\W/g,'_')}`;
       registerHook(hookFn, [
         `local player = dialogObject:getOwnName()`,
@@ -2804,8 +2853,8 @@ function parseLuaToBlocklyState(lua) {
     const rawVal = gv[2];
     globalVars.push({
       type: 'npc_lua_var',
-      x: 30 + (globalVars.length * 24),
-      y: 30 + (globalVars.length * 24),
+      x: 640,
+      y: 40 + (globalVars.length * 88),
       fields: {
         NAME: gv[1],
         MODE: /^"/.test(rawVal) ? 'text' : 'number',
@@ -3311,6 +3360,7 @@ function buildActionBlock(funcName, body, boundParams, argDefs, constVals, react
   const firstNum = (s) => { const m = s.match(/-?\d+/); return m ? parseInt(m[0]) : 0; };
   const firstCallArg = (body.match(/\(\s*([A-Za-z_]\w*|-?\d+(?:\.\d+)?)\s*\)/) || [])[1] || '';
   const price = resolveLuaNumeric(firstCallArg, body, constVals);
+  const priceVarName = (firstCallArg && constVals && Object.prototype.hasOwnProperty.call(constVals, firstCallArg)) ? firstCallArg : '';
   const reactionMeta = {
     waitText: nodes?.[targetVar]?.text || undefined,
     reactions: (reactions || []).map(r => ({
@@ -3322,11 +3372,19 @@ function buildActionBlock(funcName, body, boundParams, argDefs, constVals, react
 
   // ── Crew ──────────────────────────────────────────────────────────────────
   if (/hireConverationPartner/.test(body) || funcName.includes('hireHook'))
-    return enrichSerializedBlock({ type: 'npc_hire', fields: { PRICE: price, SUCCESS: reactionText(reactionMeta, 0, "I'm honoured to work with you, commander!") } }, reactionMeta);
+    return attachVarRefInput(
+      enrichSerializedBlock({ type: 'npc_hire', fields: { PRICE: price, SUCCESS: reactionText(reactionMeta, 0, "I'm honoured to work with you, commander!") } }, reactionMeta),
+      'PRICE_VAR',
+      priceVarName
+    );
   if (/unhireConverationPartner/.test(body) || funcName.includes('unhireHook'))
     return enrichSerializedBlock({ type: 'npc_unhire', fields: { SUCCESS: reactionText(reactionMeta, 0, 'Yes, commander!') } }, reactionMeta);
   if (/spawnCrew/.test(body))
-    return enrichSerializedBlock({ type: 'npc_spawn_crew', fields: { PRICE: price } }, reactionMeta);
+    return attachVarRefInput(
+      enrichSerializedBlock({ type: 'npc_spawn_crew', fields: { PRICE: price } }, reactionMeta),
+      'PRICE_VAR',
+      priceVarName
+    );
 
   // ── Items (order: longest method name first) ──────────────────────────────
   const itemMap = [
@@ -3347,7 +3405,11 @@ function buildActionBlock(funcName, body, boundParams, argDefs, constVals, react
     if (body.includes(fn) || funcName.toLowerCase().includes(item)) {
       // Price from bound params or body
       const p = boundParams.length ? (parseInt(boundParams[0]) || resolveLuaNumeric(boundParams[0], body, constVals)) : price;
-      return enrichSerializedBlock({ type: 'npc_sell_item', fields: { ITEM: item, PRICE: p } }, reactionMeta);
+      return attachVarRefInput(
+        enrichSerializedBlock({ type: 'npc_sell_item', fields: { ITEM: item, PRICE: p } }, reactionMeta),
+        'PRICE_VAR',
+        priceVarName || ((boundParams[0] && constVals && Object.prototype.hasOwnProperty.call(constVals, boundParams[0])) ? boundParams[0] : '')
+      );
     }
   }
 
