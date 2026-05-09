@@ -296,6 +296,9 @@
     <block type="npc_sqlite_get"></block>
     <block type="npc_sqlite_set"></block>
     <block type="npc_sqlite_increment"></block>
+    <sep></sep>
+    <block type="npc_memory_set"></block>
+    <block type="npc_memory_increment"></block>
   </category>
   <category name="✅ Conditions" colour="#16a085">
     <block type="npc_if_condition"></block>
@@ -311,6 +314,11 @@
     <block type="npc_cond_custom"></block>
     <block type="npc_cond_sqlite_value"></block>
     <block type="npc_cond_sqlite_exists"></block>
+    <block type="npc_cond_sqlite_number"></block>
+    <block type="npc_cond_sqlite_text"></block>
+    <block type="npc_cond_memory_number"></block>
+    <block type="npc_cond_memory_text"></block>
+    <block type="npc_cond_memory_exists"></block>
     <block type="npc_cond_and"></block>
     <block type="npc_cond_or"></block>
     <block type="npc_cond_not"></block>
@@ -771,6 +779,53 @@ Blockly.Blocks['npc_sqlite_increment'] = {
   }
 };
 
+// ── npc_memory_set ───────────────────────────────────────────────────────────
+Blockly.Blocks['npc_memory_set'] = {
+  init() {
+    this.appendDummyInput()
+      .appendField('🧠 Memory SET key')
+      .appendField(new Blockly.FieldTextInput('quest_state'), 'KEY')
+      .appendField('mode')
+      .appendField(new Blockly.FieldDropdown([
+        ['text', 'text'],
+        ['number', 'number'],
+        ['raw Lua', 'raw'],
+      ]), 'MODE')
+      .appendField('value')
+      .appendField(new Blockly.FieldTextInput('done'), 'VALUE');
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour('#3498db');
+    this.setTooltip(
+      'MEMORY SET\nStore a per-player quest value in the built-in npc_memory table.\n\n' +
+      'Modes:\n' +
+      '  text    → value is quoted automatically\n' +
+      '  number  → value is stored as a numeric literal\n' +
+      '  raw Lua → inserted as-is\n\n' +
+      'The memory table is auto-created even without a SQLite Table block.'
+    );
+  }
+};
+
+// ── npc_memory_increment ─────────────────────────────────────────────────────
+Blockly.Blocks['npc_memory_increment'] = {
+  init() {
+    this.appendDummyInput()
+      .appendField('🧠 Memory INCREMENT key')
+      .appendField(new Blockly.FieldTextInput('quest_step'), 'KEY')
+      .appendField('by')
+      .appendField(new Blockly.FieldNumber(1), 'AMOUNT');
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour('#3498db');
+    this.setTooltip(
+      'MEMORY INCREMENT\nIncrease a per-player numeric memory counter.\n\n' +
+      'Use this for quest steps, reputation, visit counts, etc.\n' +
+      'The memory table is auto-created even without a SQLite Table block.'
+    );
+  }
+};
+
 // ── npc_give_meta_item ────────────────────────────────────────────────────────
 Blockly.Blocks['npc_give_meta_item'] = {
   init() {
@@ -1086,6 +1141,115 @@ Blockly.Blocks['npc_cond_sqlite_exists'] = {
   }
 };
 
+// ── npc_cond_sqlite_number ───────────────────────────────────────────────────
+Blockly.Blocks['npc_cond_sqlite_number'] = {
+  init() {
+    this.appendDummyInput()
+      .appendField('SQLite number')
+      .appendField(new Blockly.FieldTextInput('quest_state'), 'TABLE')
+      .appendField('.')
+      .appendField(new Blockly.FieldTextInput('step'), 'COL')
+      .appendField(new Blockly.FieldDropdown([
+        ['≥', '>='],
+        ['>',  '>'],
+        ['=',  '=='],
+        ['≠',  '~='],
+        ['≤',  '<='],
+        ['<',  '<'],
+      ]), 'OP')
+      .appendField(new Blockly.FieldNumber(1), 'VALUE');
+    this.appendDummyInput()
+      .appendField('Default if missing')
+      .appendField(new Blockly.FieldNumber(0), 'DEFAULT');
+    this.setOutput(true, 'npc_condition');
+    this.setColour('#16a085');
+    this.setTooltip('Guided numeric SQLite condition for the current player. Requires a SQLite Table block.');
+  }
+};
+
+// ── npc_cond_sqlite_text ─────────────────────────────────────────────────────
+Blockly.Blocks['npc_cond_sqlite_text'] = {
+  init() {
+    this.appendDummyInput()
+      .appendField('SQLite text')
+      .appendField(new Blockly.FieldTextInput('quest_state'), 'TABLE')
+      .appendField('.')
+      .appendField(new Blockly.FieldTextInput('state'), 'COL')
+      .appendField(new Blockly.FieldDropdown([
+        ['=', '=='],
+        ['≠', '~='],
+      ]), 'OP')
+      .appendField(new Blockly.FieldTextInput('done'), 'VALUE');
+    this.appendDummyInput()
+      .appendField('Default if missing')
+      .appendField(new Blockly.FieldTextInput(''), 'DEFAULT');
+    this.setOutput(true, 'npc_condition');
+    this.setColour('#16a085');
+    this.setTooltip('Guided text SQLite condition for the current player. Requires a SQLite Table block.');
+  }
+};
+
+// ── npc_cond_memory_number ───────────────────────────────────────────────────
+Blockly.Blocks['npc_cond_memory_number'] = {
+  init() {
+    this.appendDummyInput()
+      .appendField('Memory number')
+      .appendField(new Blockly.FieldTextInput('quest_step'), 'KEY')
+      .appendField(new Blockly.FieldDropdown([
+        ['≥', '>='],
+        ['>',  '>'],
+        ['=',  '=='],
+        ['≠',  '~='],
+        ['≤',  '<='],
+        ['<',  '<'],
+      ]), 'OP')
+      .appendField(new Blockly.FieldNumber(1), 'VALUE');
+    this.appendDummyInput()
+      .appendField('Default if missing')
+      .appendField(new Blockly.FieldNumber(0), 'DEFAULT');
+    this.setOutput(true, 'npc_condition');
+    this.setColour('#16a085');
+    this.setTooltip('Compare a built-in per-player numeric memory value.');
+  }
+};
+
+// ── npc_cond_memory_text ─────────────────────────────────────────────────────
+Blockly.Blocks['npc_cond_memory_text'] = {
+  init() {
+    this.appendDummyInput()
+      .appendField('Memory text')
+      .appendField(new Blockly.FieldTextInput('quest_state'), 'KEY')
+      .appendField(new Blockly.FieldDropdown([
+        ['=', '=='],
+        ['≠', '~='],
+      ]), 'OP')
+      .appendField(new Blockly.FieldTextInput('done'), 'VALUE');
+    this.appendDummyInput()
+      .appendField('Default if missing')
+      .appendField(new Blockly.FieldTextInput(''), 'DEFAULT');
+    this.setOutput(true, 'npc_condition');
+    this.setColour('#16a085');
+    this.setTooltip('Compare a built-in per-player text memory value.');
+  }
+};
+
+// ── npc_cond_memory_exists ───────────────────────────────────────────────────
+Blockly.Blocks['npc_cond_memory_exists'] = {
+  init() {
+    this.appendDummyInput()
+      .appendField('Memory key exists')
+      .appendField(new Blockly.FieldTextInput('quest_state'), 'KEY')
+      .appendField('is')
+      .appendField(new Blockly.FieldDropdown([
+        ['true', 'true'],
+        ['false', 'false'],
+      ]), 'EXPECT');
+    this.setOutput(true, 'npc_condition');
+    this.setColour('#16a085');
+    this.setTooltip('Check whether a built-in memory key exists for the current player.');
+  }
+};
+
 // ── npc_cond_and ─────────────────────────────────────────────────────────────
 Blockly.Blocks['npc_cond_and'] = {
   init() {
@@ -1356,6 +1520,41 @@ function buildConditionExpression(block) {
       const expect = block.getFieldValue('EXPECT') === 'false' ? 'false' : 'true';
       return `(_dbHasPlayerRow("${table}", dialogObject:getOwnName()) == ${expect})`;
     }
+    case 'npc_cond_sqlite_number': {
+      const table = String(block.getFieldValue('TABLE') || 'quest_state').replace(/"/g, '\\"');
+      const col   = String(block.getFieldValue('COL') || 'step').replace(/"/g, '\\"');
+      const op    = block.getFieldValue('OP') || '==';
+      const value = block.getFieldValue('VALUE') || 0;
+      const def   = block.getFieldValue('DEFAULT') || 0;
+      return `(_dbGetPlayerNumber("${table}", "${col}", dialogObject:getOwnName(), ${def}) ${op} ${value})`;
+    }
+    case 'npc_cond_sqlite_text': {
+      const table = String(block.getFieldValue('TABLE') || 'quest_state').replace(/"/g, '\\"');
+      const col   = String(block.getFieldValue('COL') || 'state').replace(/"/g, '\\"');
+      const op    = block.getFieldValue('OP') || '==';
+      const value = luaStringLiteral(block.getFieldValue('VALUE') || 'done');
+      const def   = luaStringLiteral(block.getFieldValue('DEFAULT') || '');
+      return `(_dbGetPlayerText("${table}", "${col}", dialogObject:getOwnName(), ${def}) ${op} ${value})`;
+    }
+    case 'npc_cond_memory_number': {
+      const key   = String(block.getFieldValue('KEY') || 'quest_step').replace(/"/g, '\\"');
+      const op    = block.getFieldValue('OP') || '==';
+      const value = block.getFieldValue('VALUE') || 0;
+      const def   = block.getFieldValue('DEFAULT') || 0;
+      return `(_memGetNumber(dialogObject:getOwnName(), "${key}", ${def}) ${op} ${value})`;
+    }
+    case 'npc_cond_memory_text': {
+      const key   = String(block.getFieldValue('KEY') || 'quest_state').replace(/"/g, '\\"');
+      const op    = block.getFieldValue('OP') || '==';
+      const value = luaStringLiteral(block.getFieldValue('VALUE') || 'done');
+      const def   = luaStringLiteral(block.getFieldValue('DEFAULT') || '');
+      return `(_memGetText(dialogObject:getOwnName(), "${key}", ${def}) ${op} ${value})`;
+    }
+    case 'npc_cond_memory_exists': {
+      const key    = String(block.getFieldValue('KEY') || 'quest_state').replace(/"/g, '\\"');
+      const expect = block.getFieldValue('EXPECT') === 'false' ? 'false' : 'true';
+      return `(_memHas(dialogObject:getOwnName(), "${key}") == ${expect})`;
+    }
     case 'npc_cond_and': {
       const a = buildConditionExpression(block.getInputTargetBlock('A'));
       const b = buildConditionExpression(block.getInputTargetBlock('B'));
@@ -1373,6 +1572,10 @@ function buildConditionExpression(block) {
     default:
       return 'false';
   }
+}
+
+function luaStringLiteral(s) {
+  return `"${String(s ?? '').replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
 }
 
 function makeSellAction(item, price, parentVarName) {
@@ -1800,6 +2003,42 @@ function processActionBlock(block, parentVarName) {
       waitNode.reactions = [{ code: 0, target: successVn }];
       return waitVn;
     }
+    case 'npc_memory_set': {
+      const key   = block.getFieldValue('KEY');
+      const mode  = block.getFieldValue('MODE');
+      const value = block.getFieldValue('VALUE');
+      const hookFn = `memorySetHook_${String(key).replace(/\W/g,'_')}`;
+      const luaVal = mode === 'text' ? luaStringLiteral(value)
+                   : mode === 'number' ? String(Number(value) || 0)
+                   : String(value || 'nil');
+      registerHook(hookFn, [
+        `local player = dialogObject:getOwnName()`,
+        `_memSet(player, ${luaStringLiteral(key)}, ${luaVal})`,
+        `return 0`,
+      ]);
+      const waitVn = makeNode('Saving memory...');
+      const successVn = makeNode('Memory updated.');
+      const waitNode = getNode(waitVn);
+      waitNode.hook = hookFn;
+      waitNode.reactions = [{ code: 0, target: successVn }];
+      return waitVn;
+    }
+    case 'npc_memory_increment': {
+      const key    = block.getFieldValue('KEY');
+      const amount = block.getFieldValue('AMOUNT');
+      const hookFn = `memoryIncrHook_${String(key).replace(/\W/g,'_')}`;
+      registerHook(hookFn, [
+        `local player = dialogObject:getOwnName()`,
+        `_memIncrement(player, ${luaStringLiteral(key)}, ${amount})`,
+        `return 0`,
+      ]);
+      const waitVn = makeNode('Updating memory...');
+      const successVn = makeNode('Memory counter updated.');
+      const waitNode = getNode(waitVn);
+      waitNode.hook = hookFn;
+      waitNode.reactions = [{ code: 0, target: successVn }];
+      return waitVn;
+    }
     case 'npc_custom_hook': {
       const name    = block.getFieldValue('NAME');
       const body    = block.getFieldValue('BODY');
@@ -1869,6 +2108,24 @@ function generateLua(scriptName) {
     }
   }
 
+  // Built-in per-player memory uses an internal SQLite table and auto-enables DB helpers
+  const usesMemory = allBlocks.some(b => [
+    'npc_memory_set',
+    'npc_memory_increment',
+    'npc_cond_memory_number',
+    'npc_cond_memory_text',
+    'npc_cond_memory_exists',
+  ].includes(b.type));
+  if (usesMemory) {
+    _state.dbPath = _state.dbPath || '/StarMade/server-database/npc-memory.db';
+    if (!_state.dbTables.has('npc_memory')) {
+      _state.dbTables.set('npc_memory', {
+        db: _state.dbPath,
+        cols: 'player TEXT NOT NULL, k TEXT NOT NULL, v NUMERIC, PRIMARY KEY(player, k)'
+      });
+    }
+  }
+
   // Find greeting blocks
   const greetings = allBlocks.filter(b => b.type === 'npc_greeting');
   if (greetings.length === 0) {
@@ -1924,8 +2181,45 @@ function generateLua(scriptName) {
     lines.push(`  if v==nil then return def end`);
     lines.push(`  return v`);
     lines.push(`end`);
+    lines.push(`local function _dbGetPlayerNumber(t,col,player,def)`);
+    lines.push(`  local v = _dbGetPlayerValue(t,col,player,def)`);
+    lines.push(`  local n = tonumber(v)`);
+    lines.push(`  if n==nil then return tonumber(def) or 0 end`);
+    lines.push(`  return n`);
+    lines.push(`end`);
+    lines.push(`local function _dbGetPlayerText(t,col,player,def)`);
+    lines.push(`  local v = _dbGetPlayerValue(t,col,player,def)`);
+    lines.push(`  if v==nil then return tostring(def or "") end`);
+    lines.push(`  return tostring(v)`);
+    lines.push(`end`);
     lines.push(`local function _dbHasPlayerRow(t, player)`);
     lines.push(`  return _dbGet("SELECT 1 FROM "..t.." WHERE player=?", player) ~= nil`);
+    lines.push(`end`);
+    lines.push(`local function _memGet(player, key, def)`);
+    lines.push(`  local v = _dbGet("SELECT v FROM npc_memory WHERE player=? AND k=?", player, key)`);
+    lines.push(`  if v==nil then return def end`);
+    lines.push(`  return v`);
+    lines.push(`end`);
+    lines.push(`local function _memGetNumber(player, key, def)`);
+    lines.push(`  local n = tonumber(_memGet(player, key, def))`);
+    lines.push(`  if n==nil then return tonumber(def) or 0 end`);
+    lines.push(`  return n`);
+    lines.push(`end`);
+    lines.push(`local function _memGetText(player, key, def)`);
+    lines.push(`  local v = _memGet(player, key, def)`);
+    lines.push(`  if v==nil then return tostring(def or "") end`);
+    lines.push(`  return tostring(v)`);
+    lines.push(`end`);
+    lines.push(`local function _memHas(player, key)`);
+    lines.push(`  return _dbGet("SELECT 1 FROM npc_memory WHERE player=? AND k=?", player, key) ~= nil`);
+    lines.push(`end`);
+    lines.push(`local function _memSet(player, key, val)`);
+    lines.push(`  if _memHas(player, key) then _dbExec("UPDATE npc_memory SET v=? WHERE player=? AND k=?", val, player, key)`);
+    lines.push(`  else _dbExec("INSERT INTO npc_memory(player,k,v)VALUES(?,?,?)", player, key, val) end`);
+    lines.push(`end`);
+    lines.push(`local function _memIncrement(player, key, n)`);
+    lines.push(`  n = n or 1`);
+    lines.push(`  _memSet(player, key, _memGetNumber(player, key, 0) + n)`);
     lines.push(`end`);
     lines.push(``);
   }
@@ -2604,12 +2898,77 @@ function buildConditionBlockFromExpression(expr) {
     };
   }
 
+  m = expr.match(/^_dbGetPlayerNumber\("([^"]+)",\s*"([^"]+)",\s*dialogObject:getOwnName\(\),\s*(-?\d+(?:\.\d+)?)\)\s*(>=|<=|==|~=|>|<)\s*(-?\d+(?:\.\d+)?)$/);
+  if (m) {
+    return {
+      type: 'npc_cond_sqlite_number',
+      fields: {
+        TABLE: m[1],
+        COL: m[2],
+        DEFAULT: Number(m[3]),
+        OP: m[4],
+        VALUE: Number(m[5]),
+      }
+    };
+  }
+
+  m = expr.match(/^_dbGetPlayerText\("([^"]+)",\s*"([^"]+)",\s*dialogObject:getOwnName\(\),\s*"([^"]*)"\)\s*(==|~=)\s*"([^"]*)"$/);
+  if (m) {
+    return {
+      type: 'npc_cond_sqlite_text',
+      fields: {
+        TABLE: m[1],
+        COL: m[2],
+        DEFAULT: m[3],
+        OP: m[4],
+        VALUE: m[5],
+      }
+    };
+  }
+
   m = expr.match(/^_dbHasPlayerRow\("([^"]+)",\s*dialogObject:getOwnName\(\)\)\s*==\s*(true|false)$/);
   if (m) {
     return {
       type: 'npc_cond_sqlite_exists',
       fields: {
         TABLE: m[1],
+        EXPECT: m[2],
+      }
+    };
+  }
+
+  m = expr.match(/^_memGetNumber\(dialogObject:getOwnName\(\),\s*"([^"]+)",\s*(-?\d+(?:\.\d+)?)\)\s*(>=|<=|==|~=|>|<)\s*(-?\d+(?:\.\d+)?)$/);
+  if (m) {
+    return {
+      type: 'npc_cond_memory_number',
+      fields: {
+        KEY: m[1],
+        DEFAULT: Number(m[2]),
+        OP: m[3],
+        VALUE: Number(m[4]),
+      }
+    };
+  }
+
+  m = expr.match(/^_memGetText\(dialogObject:getOwnName\(\),\s*"([^"]+)",\s*"([^"]*)"\)\s*(==|~=)\s*"([^"]*)"$/);
+  if (m) {
+    return {
+      type: 'npc_cond_memory_text',
+      fields: {
+        KEY: m[1],
+        DEFAULT: m[2],
+        OP: m[3],
+        VALUE: m[4],
+      }
+    };
+  }
+
+  m = expr.match(/^_memHas\(dialogObject:getOwnName\(\),\s*"([^"]+)"\)\s*==\s*(true|false)$/);
+  if (m) {
+    return {
+      type: 'npc_cond_memory_exists',
+      fields: {
+        KEY: m[1],
         EXPECT: m[2],
       }
     };
@@ -2778,6 +3137,19 @@ function buildActionBlock(funcName, body, boundParams, argDefs) {
       type: 'npc_give_gravity',
       fields: { STATE: gravVal }
     };
+  }
+
+  // ── SQLite / memory actions ───────────────────────────────────────────────
+  let m2 = body.match(/_memSet\(player,\s*"([^"]+)",\s*(.+)\)/);
+  if (m2) {
+    let mode = 'raw', value = m2[2].trim();
+    if (/^".*"$/.test(value)) { mode = 'text'; value = value.slice(1, -1).replace(/\\"/g, '"'); }
+    else if (/^-?\d+(?:\.\d+)?$/.test(value)) { mode = 'number'; }
+    return { type: 'npc_memory_set', fields: { KEY: m2[1], MODE: mode, VALUE: value } };
+  }
+  m2 = body.match(/_memIncrement\(player,\s*"([^"]+)",\s*(-?\d+(?:\.\d+)?)\)/);
+  if (m2) {
+    return { type: 'npc_memory_increment', fields: { KEY: m2[1], AMOUNT: Number(m2[2]) } };
   }
 
   // ── Conditions ────────────────────────────────────────────────────────────
