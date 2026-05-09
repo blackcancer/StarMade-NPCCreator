@@ -746,23 +746,23 @@ Blockly.Blocks['npc_move_to'] = {
 Blockly.Blocks['npc_sqlite_table'] = {
   init() {
     this.appendDummyInput()
-      .appendField('💾 SQLite table')
+      .appendField('💾 DB table')
       .appendField(new Blockly.FieldTextInput('quest_state'), 'TABLE')
       .appendField('DB path')
-      .appendField(new Blockly.FieldTextInput('/StarMade/server-database/npc.db'), 'DB');
+      .appendField(new Blockly.FieldTextInput('(auto: world-aware HSQLDB)'), 'DB');
     this.appendDummyInput()
       .appendField('Columns (SQL)')
-      .appendField(new Blockly.FieldTextInput('player TEXT PRIMARY KEY, done INTEGER DEFAULT 0'), 'COLS');
+      .appendField(new Blockly.FieldTextInput('player VARCHAR(255) PRIMARY KEY, done INTEGER DEFAULT 0'), 'COLS');
     this.setPreviousStatement(true, null);
     this.setNextStatement(true, null);
     this.setColour('#3498db');
     this.setTooltip(
-      'SQLITE TABLE\nDefine a persistent SQLite table on the server.\n\n' +
-      'DB path: absolute path on server (e.g. /StarMade/server-database/npc.db)\n\n' +
-      'Columns: SQL definitions separated by commas\n' +
-      '  e.g.: player TEXT PRIMARY KEY, done INTEGER DEFAULT 0\n\n' +
-      'Requirement: sqlite-jdbc.jar must be on the StarMade classpath.\n' +
-      'Get it at: github.com/xerial/sqlite-jdbc/releases'
+      'HSQLDB TABLE\nDéfinit une table persistante dans la base HSQLDB du monde courant.\n\n' +
+      'Le chemin est résolu automatiquement au runtime :\n' +
+      '  ./server-database/<world_name>/npc_data/npc_state\n\n' +
+      'Colonnes : définitions SQL séparées par des virgules\n' +
+      '  ex: player VARCHAR(255) PRIMARY KEY, done INTEGER DEFAULT 0\n\n' +
+      'Aucune dépendance externe : HSQLDB est déjà embarqué dans StarMade.'
     );
   }
 };
@@ -2573,6 +2573,7 @@ function generateLua(scriptName) {
     rootVar: 'entry',
     dbTables: new Map(),
     dbPath: null,
+    usesHsqlMemory: false,
     luaVars: [],
   };
 
@@ -2595,11 +2596,9 @@ function generateLua(scriptName) {
       });
     }
     if (b.type === 'npc_sqlite_table') {
-      const tbl = b.getFieldValue('TABLE');
-      const db  = b.getFieldValue('DB');
+      const tbl  = b.getFieldValue('TABLE');
       const cols = b.getFieldValue('COLS');
-      _state.dbTables.set(tbl, { db, cols });
-      _state.dbPath = _state.dbPath || db;
+      _state.dbTables.set(tbl, { cols });  // DB path est géré automatiquement (world-aware HSQLDB)
     }
   }
 
@@ -2618,13 +2617,8 @@ function generateLua(scriptName) {
     'npc_cond_quest_step',
   ].includes(b.type));
   if (usesMemory) {
-    _state.dbPath = _state.dbPath || '/StarMade/server-database/npc-memory.db';
-    if (!_state.dbTables.has('npc_memory')) {
-      _state.dbTables.set('npc_memory', {
-        db: _state.dbPath,
-        cols: 'player TEXT NOT NULL, k TEXT NOT NULL, v NUMERIC, PRIMARY KEY(player, k)'
-      });
-    }
+    // HSQLDB world-aware: path is resolved at runtime via ServerConfig.WORLD
+    _state.usesHsqlMemory = true;
   }
 
   // Find greeting blocks
@@ -2649,87 +2643,96 @@ function generateLua(scriptName) {
     lines.push(``);
   }
 
-  // SQLite init
-  if (_state.dbTables.size > 0 && _state.dbPath) {
-    lines.push(`-- SQLite persistent state`);
+  // HSQLDB persistent state (world-aware, auto-create DB + tables)
+  const needsHsql = _state.usesHsqlMemory || (_state.dbTables.size > 0);
+  if (needsHsql) {
+    lines.push(`-- HSQLDB persistent state (world-aware, auto-creates DB and tables)`);
+    lines.push(`local _ServerConfig = luajava.bindClass("org.schema.game.server.data.ServerConfig")`);
+    lines.push(`local _worldName    = _ServerConfig.WORLD:getString():lower()`);
+    lines.push(`local _npcDbUrl     = "jdbc:hsqldb:file:./server-database/" .. _worldName .. "/npc_data/npc_state;shutdown=false;hsqldb.write_delay=false"`);
+    lines.push(`luajava.bindClass("org.hsqldb.jdbc.JDBCDriver")  -- enregistre le driver (déjà chargé par StarMade)`);
     lines.push(`local _DriverManager = luajava.bindClass("java.sql.DriverManager")`);
-    lines.push(`pcall(function() luajava.bindClass("org.sqlite.JDBC") end)`);
-    lines.push(`local _npcDb = _DriverManager:getConnection("jdbc:sqlite:${_state.dbPath}")`);
     lines.push(``);
-    for (const [tbl, { cols }] of _state.dbTables) {
-      lines.push(`do local s = _npcDb:createStatement()`);
-      lines.push(`  s:execute("CREATE TABLE IF NOT EXISTS ${tbl} (${cols})")`);
-      lines.push(`  s:close() end`);
+    lines.push(`-- Ouvre (et crée si besoin) la connexion HSQLDB`);
+    lines.push(`local _npcDb = _DriverManager.getConnection(_npcDbUrl, "SA", "")`);
+    lines.push(`_npcDb:setAutoCommit(true)`);
+    lines.push(``);
+    // Create all declared tables
+    const tableEntries = [..._state.dbTables.entries()];
+    // Always include npc_memory when usesHsqlMemory
+    if (_state.usesHsqlMemory && !_state.dbTables.has('npc_memory')) {
+      tableEntries.push(['npc_memory', { cols: 'player VARCHAR(255) NOT NULL, k VARCHAR(255) NOT NULL, v LONGVARCHAR, PRIMARY KEY(player, k)' }]);
+    }
+    for (const [tbl, { cols }] of tableEntries) {
+      lines.push(`do`);
+      lines.push(`  local _s = _npcDb:createStatement()`);
+      lines.push(`  _s:execute("CREATE CACHED TABLE IF NOT EXISTS ${tbl} (${cols})")`);
+      lines.push(`  _s:close()`);
+      lines.push(`end`);
     }
     lines.push(``);
+    // Core DB helpers
     lines.push(`local function _dbGet(sql, ...)`);
     lines.push(`  local ps = _npcDb:prepareStatement(sql)`);
-    lines.push(`  local a = {...}; for i,v in ipairs(a) do ps:setObject(i,v) end`);
+    lines.push(`  local a = {...}; for i,v in ipairs(a) do ps:setObject(i, v) end`);
     lines.push(`  local rs = ps:executeQuery(); local r = nil`);
     lines.push(`  if rs:next() then r = rs:getObject(1) end`);
     lines.push(`  rs:close(); ps:close(); return r`);
     lines.push(`end`);
     lines.push(`local function _dbExec(sql, ...)`);
     lines.push(`  local ps = _npcDb:prepareStatement(sql)`);
-    lines.push(`  local a = {...}; for i,v in ipairs(a) do ps:setObject(i,v) end`);
+    lines.push(`  local a = {...}; for i,v in ipairs(a) do ps:setObject(i, v) end`);
     lines.push(`  ps:executeUpdate(); ps:close()`);
     lines.push(`end`);
+    // Upsert via HSQLDB MERGE INTO
     lines.push(`local function _dbUpsert(t, kc, kv, col, val)`);
-    lines.push(`  if _dbGet("SELECT "..col.." FROM "..t.." WHERE "..kc.."=?",kv)==nil then`);
-    lines.push(`    _dbExec("INSERT INTO "..t.."("..kc..","..col..")VALUES(?,?)",kv,val)`);
-    lines.push(`  else _dbExec("UPDATE "..t.." SET "..col.."=? WHERE "..kc.."=?",val,kv) end`);
+    lines.push(`  _dbExec("MERGE INTO "..t.." AS tgt USING (VALUES(CAST(? AS VARCHAR(255)),CAST(? AS LONGVARCHAR))) AS src(k,v) ON tgt."..kc.."=src.k WHEN MATCHED THEN UPDATE SET "..col.."=src.v WHEN NOT MATCHED THEN INSERT ("..kc..","..col..") VALUES(src.k,src.v)", kv, val)`);
     lines.push(`end`);
-    lines.push(`local function _dbIncrement(t,kc,kv,col,n)`);
-    lines.push(`  n=n or 1`);
-    lines.push(`  local cur=_dbGet("SELECT "..col.." FROM "..t.." WHERE "..kc.."=?",kv)`);
-    lines.push(`  if cur==nil then _dbExec("INSERT INTO "..t.."("..kc..","..col..")VALUES(?,?)",kv,n)`);
-    lines.push(`  else _dbExec("UPDATE "..t.." SET "..col.."="..col.."+? WHERE "..kc.."=?",n,kv) end`);
+    lines.push(`local function _dbIncrement(t, kc, kv, col, n)`);
+    lines.push(`  n = n or 1`);
+    lines.push(`  local cur = _dbGet("SELECT "..col.." FROM "..t.." WHERE "..kc.."=?", kv)`);
+    lines.push(`  if cur == nil then`);
+    lines.push(`    _dbExec("INSERT INTO "..t.."("..kc..","..col..") VALUES(?,?)", kv, n)`);
+    lines.push(`  else`);
+    lines.push(`    _dbExec("UPDATE "..t.." SET "..col.."="..col.." + ? WHERE "..kc.."=?", n, kv)`);
+    lines.push(`  end`);
     lines.push(`end`);
-    lines.push(`local function _dbGetPlayerValue(t,col,player,def)`);
+    lines.push(`local function _dbGetPlayerValue(t, col, player, def)`);
     lines.push(`  local v = _dbGet("SELECT "..col.." FROM "..t.." WHERE player=?", player)`);
-    lines.push(`  if v==nil then return def end`);
-    lines.push(`  return v`);
+    lines.push(`  if v == nil then return def end; return v`);
     lines.push(`end`);
-    lines.push(`local function _dbGetPlayerNumber(t,col,player,def)`);
-    lines.push(`  local v = _dbGetPlayerValue(t,col,player,def)`);
-    lines.push(`  local n = tonumber(v)`);
-    lines.push(`  if n==nil then return tonumber(def) or 0 end`);
-    lines.push(`  return n`);
+    lines.push(`local function _dbGetPlayerNumber(t, col, player, def)`);
+    lines.push(`  local n = tonumber(_dbGetPlayerValue(t, col, player, def))`);
+    lines.push(`  return n ~= nil and n or (tonumber(def) or 0)`);
     lines.push(`end`);
-    lines.push(`local function _dbGetPlayerText(t,col,player,def)`);
-    lines.push(`  local v = _dbGetPlayerValue(t,col,player,def)`);
-    lines.push(`  if v==nil then return tostring(def or "") end`);
-    lines.push(`  return tostring(v)`);
+    lines.push(`local function _dbGetPlayerText(t, col, player, def)`);
+    lines.push(`  local v = _dbGetPlayerValue(t, col, player, def)`);
+    lines.push(`  return v ~= nil and tostring(v) or tostring(def or "")`);
     lines.push(`end`);
     lines.push(`local function _dbHasPlayerRow(t, player)`);
     lines.push(`  return _dbGet("SELECT 1 FROM "..t.." WHERE player=?", player) ~= nil`);
     lines.push(`end`);
-    lines.push(`local function _memGet(player, key, def)`);
-    lines.push(`  local v = _dbGet("SELECT v FROM npc_memory WHERE player=? AND k=?", player, key)`);
-    lines.push(`  if v==nil then return def end`);
-    lines.push(`  return v`);
-    lines.push(`end`);
-    lines.push(`local function _memGetNumber(player, key, def)`);
-    lines.push(`  local n = tonumber(_memGet(player, key, def))`);
-    lines.push(`  if n==nil then return tonumber(def) or 0 end`);
-    lines.push(`  return n`);
-    lines.push(`end`);
-    lines.push(`local function _memGetText(player, key, def)`);
-    lines.push(`  local v = _memGet(player, key, def)`);
-    lines.push(`  if v==nil then return tostring(def or "") end`);
-    lines.push(`  return tostring(v)`);
-    lines.push(`end`);
-    lines.push(`local function _memHas(player, key)`);
-    lines.push(`  return _dbGet("SELECT 1 FROM npc_memory WHERE player=? AND k=?", player, key) ~= nil`);
-    lines.push(`end`);
-    lines.push(`local function _memSet(player, key, val)`);
-    lines.push(`  if _memHas(player, key) then _dbExec("UPDATE npc_memory SET v=? WHERE player=? AND k=?", val, player, key)`);
-    lines.push(`  else _dbExec("INSERT INTO npc_memory(player,k,v)VALUES(?,?,?)", player, key, val) end`);
-    lines.push(`end`);
-    lines.push(`local function _memIncrement(player, key, n)`);
-    lines.push(`  n = n or 1`);
-    lines.push(`  _memSet(player, key, _memGetNumber(player, key, 0) + n)`);
-    lines.push(`end`);
+    // Memory helpers (per-player key-value, stored in npc_memory)
+    if (_state.usesHsqlMemory) {
+      lines.push(`local function _memSet(player, key, val)`);
+      lines.push(`  _dbExec("MERGE INTO npc_memory AS m USING (VALUES(CAST(? AS VARCHAR(255)),CAST(? AS VARCHAR(255)),CAST(? AS LONGVARCHAR))) AS v(p,k,vv) ON m.player=v.p AND m.k=v.k WHEN MATCHED THEN UPDATE SET v=v.vv WHEN NOT MATCHED THEN INSERT(player,k,v) VALUES(v.p,v.k,v.vv)", player, key, tostring(val))`);
+      lines.push(`end`);
+      lines.push(`local function _memGetText(player, key, def)`);
+      lines.push(`  local v = _dbGet("SELECT v FROM npc_memory WHERE player=? AND k=?", player, key)`);
+      lines.push(`  return v ~= nil and tostring(v) or tostring(def or "")`);
+      lines.push(`end`);
+      lines.push(`local function _memGetNumber(player, key, def)`);
+      lines.push(`  local n = tonumber(_memGetText(player, key, tostring(def)))`);
+      lines.push(`  return n ~= nil and n or (tonumber(def) or 0)`);
+      lines.push(`end`);
+      lines.push(`local function _memHas(player, key)`);
+      lines.push(`  return _dbGet("SELECT 1 FROM npc_memory WHERE player=? AND k=?", player, key) ~= nil`);
+      lines.push(`end`);
+      lines.push(`local function _memIncrement(player, key, n)`);
+      lines.push(`  n = n or 1`);
+      lines.push(`  _memSet(player, key, _memGetNumber(player, key, 0) + n)`);
+      lines.push(`end`);
+    }
     lines.push(``);
   }
 
