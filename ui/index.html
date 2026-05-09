@@ -4288,33 +4288,29 @@ function loadExample(name) {  // name: 'merchant'|'quest_giver'|'daily_trader'|'
         "type": "npc_greeting", "x": 30, "y": 30,
         "fields": { "TEXT": "Greetings {name}! Do you have the ore samples I requested?", "MS": 2000 },
         "inputs": { "CHOICES": { "block": {
-          "type": "npc_choice", "fields": { "LABEL": "Yes, here are the samples." },
+          "type": "npc_choice", "fields": { "LABEL": "Yes, here are the 5 ore samples." },
           "inputs": { "ACTIONS": { "block": {
-            "type": "npc_check_inventory",
+            "type": "npc_take_item",
             "fields": {
               "ITEM_TYPE": 62,
               "COUNT": 5,
-              "SUCCESS": "Perfect. Let me take those.",
+              "SUCCESS": "Thank you! Here are your 25 000 credits.",
               "FAIL": "You don't have 5 Fatanium ore. Come back when you do."
-            }
+            },
+            "next": { "block": {
+              "type": "npc_give_credits",
+              "fields": { "AMOUNT": 25000, "SUCCESS": "Credits transferred. Well done!" }
+            }}
           }}},
           "next": { "block": {
             "type": "npc_choice", "fields": { "LABEL": "I need more time." },
             "inputs": { "ACTIONS": { "block": {
               "type": "npc_send_message",
-              "fields": { "TYPE": "info", "TEXT": "Bring 5x Fatanium Ore (item 62)." }
+              "fields": { "TYPE": "info", "TEXT": "Bring 5x Fatanium Ore (item type 62)." }
             }}},
             "next": { "block": { "type": "npc_goback", "fields": { "LABEL": "Goodbye." } } }
           }}
         }}}
-      },
-      {
-        "type": "npc_take_item", "x": 600, "y": 30,
-        "fields": {
-          "ITEM_TYPE": 62, "COUNT": 5,
-          "SUCCESS": "Thank you! Here are your 25 000 credits.",
-          "FAIL": "Item not found — something went wrong."
-        }
       }
     ] } }
 
