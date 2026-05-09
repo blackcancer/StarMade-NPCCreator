@@ -196,8 +196,6 @@
   <button class="btn btn-secondary" onclick="loadExample()" title="Load a built-in example">📄 Example</button>
   <button class="btn btn-secondary" onclick="loadWorkspace()" title="Load a saved workspace (.json)">📂 Load</button>
   <button class="btn btn-secondary" onclick="saveWorkspace()" title="Save the current workspace as .json">💾 Save</button>
-  <button class="btn btn-secondary" onclick="createMissingVariables()" title="Create missing Variable blocks for connected references">🧮 Create missing vars</button>
-  <button class="btn btn-primary" onclick="generateAndShow()" title="Generate Lua script from blocks">▶ Generate Lua</button>
   <button class="btn btn-success" onclick="copyLua()" title="Copy Lua to clipboard">📋 Copy</button>
   <button class="btn btn-success" onclick="downloadLua()" title="Download the generated .lua file">⬇ Download .lua</button>
   <input type="file" id="fileInput" accept=".json,.lua" style="display:none" onchange="onFileLoad(event)" />
@@ -215,7 +213,7 @@
     </div>
 
     <div class="tab-content active" id="tab-lua">
-      <pre id="luaOutput">-- Click "▶ Generate Lua" to see output here.</pre>
+      <pre id="luaOutput">-- Lua output updates automatically.</pre>
     </div>
 
     <div class="tab-content" id="tab-help">
@@ -223,7 +221,6 @@
 <span style="color:#58a6ff;font-weight:700">Block Reference</span>
 
 <span style="color:#e94560">📋 Dialog Structure</span>
-  NPC Script     — root container (one per script)
   Greeting       — opening text shown to player
   Choice         — a button option the player can click
   Go Back        — adds a "back" button to previous menu
@@ -250,6 +247,12 @@
   Set Value      — write a value for this player
   Increment      — add N to a counter
 
+<span style="color:#d35400">📜 Quests</span>
+  Quest Start    — mark quest active and set initial step
+  Quest Set Step — update quest progression step
+  Quest Complete — mark quest complete
+  Quest Fail     — mark quest failed
+
 <span style="color:#e74c3c">🔧 Advanced</span>
   Custom Hook    — write raw Lua code for a hook
 
@@ -271,7 +274,6 @@
 <!-- ── Blockly toolbox XML ───────────────────────────────────────────────── -->
 <xml id="toolbox" style="display:none">
   <category name="📋 Dialog" colour="#4a90d9">
-    <block type="npc_script"></block>
     <block type="npc_greeting"></block>
     <block type="npc_choice"></block>
     <block type="npc_goback"></block>
@@ -309,6 +311,15 @@
     <block type="npc_memory_set"></block>
     <block type="npc_memory_increment"></block>
   </category>
+  <category name="📜 Quests" colour="#d35400">
+    <block type="npc_quest_start"></block>
+    <block type="npc_quest_set_step"></block>
+    <block type="npc_quest_complete"></block>
+    <block type="npc_quest_fail"></block>
+    <sep></sep>
+    <block type="npc_cond_quest_status"></block>
+    <block type="npc_cond_quest_step"></block>
+  </category>
   <category name="✅ Conditions" colour="#16a085">
     <block type="npc_if_condition"></block>
     <block type="npc_check_credits"></block>
@@ -343,19 +354,6 @@
 // ──────────────────────────────────────────────────────────────────────────────
 // BLOCK DEFINITIONS
 // ──────────────────────────────────────────────────────────────────────────────
-
-// ── npc_script ────────────────────────────────────────────────────────────────
-Blockly.Blocks['npc_script'] = {
-  init() {
-    this.appendDummyInput()
-      .appendField('🖹 NPC Script')
-      .appendField(new Blockly.FieldTextInput('my-npc'), 'NAME');
-    this.appendStatementInput('NODES').setCheck(null).appendField('Dialog');
-    this.setColour('#4a90d9');
-    this.setTooltip('Root container for the NPC dialog script.');
-    this.setDeletable(false);
-  }
-};
 
 // ── npc_lua_var ─────────────────────────────────────────────────────────────
 Blockly.Blocks['npc_lua_var'] = {
@@ -887,6 +885,115 @@ Blockly.Blocks['npc_memory_increment'] = {
       'Use this for quest steps, reputation, visit counts, etc.\n' +
       'The memory table is auto-created even without a SQLite Table block.'
     );
+  }
+};
+
+// ── npc_quest_start ──────────────────────────────────────────────────────────
+Blockly.Blocks['npc_quest_start'] = {
+  init() {
+    this.appendDummyInput()
+      .appendField('📜 Quest START id')
+      .appendField(new Blockly.FieldTextInput('intro_delivery'), 'QUEST_ID')
+      .appendField('step')
+      .appendField(new Blockly.FieldNumber(1, 0), 'STEP');
+    this.appendDummyInput()
+      .appendField('Success text')
+      .appendField(new Blockly.FieldTextInput('Quest started.'), 'SUCCESS');
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour('#d35400');
+    this.setTooltip('QUEST START\nMarks a quest as active and initializes its step in built-in memory.');
+  }
+};
+
+// ── npc_quest_set_step ───────────────────────────────────────────────────────
+Blockly.Blocks['npc_quest_set_step'] = {
+  init() {
+    this.appendDummyInput()
+      .appendField('📜 Quest SET STEP id')
+      .appendField(new Blockly.FieldTextInput('intro_delivery'), 'QUEST_ID')
+      .appendField('step')
+      .appendField(new Blockly.FieldNumber(2, 0), 'STEP');
+    this.appendDummyInput()
+      .appendField('Success text')
+      .appendField(new Blockly.FieldTextInput('Quest updated.'), 'SUCCESS');
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour('#d35400');
+    this.setTooltip('QUEST SET STEP\nSets the numeric quest step in built-in memory and keeps status active.');
+  }
+};
+
+// ── npc_quest_complete ───────────────────────────────────────────────────────
+Blockly.Blocks['npc_quest_complete'] = {
+  init() {
+    this.appendDummyInput()
+      .appendField('📜 Quest COMPLETE id')
+      .appendField(new Blockly.FieldTextInput('intro_delivery'), 'QUEST_ID');
+    this.appendDummyInput()
+      .appendField('Success text')
+      .appendField(new Blockly.FieldTextInput('Quest complete!'), 'SUCCESS');
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour('#d35400');
+    this.setTooltip('QUEST COMPLETE\nMarks a quest as complete in built-in memory.');
+  }
+};
+
+// ── npc_quest_fail ───────────────────────────────────────────────────────────
+Blockly.Blocks['npc_quest_fail'] = {
+  init() {
+    this.appendDummyInput()
+      .appendField('📜 Quest FAIL id')
+      .appendField(new Blockly.FieldTextInput('intro_delivery'), 'QUEST_ID');
+    this.appendDummyInput()
+      .appendField('Success text')
+      .appendField(new Blockly.FieldTextInput('Quest failed.'), 'SUCCESS');
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour('#d35400');
+    this.setTooltip('QUEST FAIL\nMarks a quest as failed in built-in memory.');
+  }
+};
+
+// ── npc_cond_quest_status ────────────────────────────────────────────────────
+Blockly.Blocks['npc_cond_quest_status'] = {
+  init() {
+    this.appendDummyInput()
+      .appendField('Quest')
+      .appendField(new Blockly.FieldTextInput('intro_delivery'), 'QUEST_ID')
+      .appendField('status is')
+      .appendField(new Blockly.FieldDropdown([
+        ['active', 'active'],
+        ['complete', 'complete'],
+        ['failed', 'failed'],
+        ['not started', ''],
+      ]), 'STATUS');
+    this.setOutput(true, 'npc_condition');
+    this.setColour('#d35400');
+    this.setTooltip('QUEST STATUS CONDITION\nChecks the stored quest status in built-in memory.');
+  }
+};
+
+// ── npc_cond_quest_step ──────────────────────────────────────────────────────
+Blockly.Blocks['npc_cond_quest_step'] = {
+  init() {
+    this.appendDummyInput()
+      .appendField('Quest')
+      .appendField(new Blockly.FieldTextInput('intro_delivery'), 'QUEST_ID')
+      .appendField('step')
+      .appendField(new Blockly.FieldDropdown([
+        ['≥', '>='],
+        ['>',  '>'],
+        ['=',  '=='],
+        ['≠',  '~='],
+        ['≤',  '<='],
+        ['<',  '<'],
+      ]), 'OP')
+      .appendField(new Blockly.FieldNumber(1, 0), 'STEP');
+    this.setOutput(true, 'npc_condition');
+    this.setColour('#d35400');
+    this.setTooltip('QUEST STEP CONDITION\nChecks the numeric quest step stored in built-in memory.');
   }
 };
 
@@ -1683,46 +1790,6 @@ function getMissingConnectedVariables(allBlocks) {
   return Array.from(missing).sort((a, b) => a.localeCompare(b));
 }
 
-function createMissingVariables() {
-  if (!workspace?.getAllBlocks || !workspace?.newBlock) return;
-  const allBlocks = workspace.getAllBlocks(false);
-  const missing = getMissingConnectedVariables(allBlocks);
-  if (missing.length === 0) {
-    document.getElementById('statusBar').textContent = 'No missing variables to create.';
-    return;
-  }
-
-  const existingVars = allBlocks.filter(b => b.type === 'npc_lua_var');
-  const greetings = allBlocks.filter(b => b.type === 'npc_greeting');
-  const baseX = 30;
-  let nextY = existingVars.length > 0
-    ? Math.max(...existingVars.map(b => (b.getRelativeToSurfaceXY ? b.getRelativeToSurfaceXY().y : 40))) + 88
-    : 40;
-
-  for (const name of missing) {
-    const block = workspace.newBlock('npc_lua_var');
-    block.setFieldValue(name, 'NAME');
-    block.setFieldValue('raw', 'MODE');
-    block.setFieldValue('0', 'VALUE');
-    if (block.initSvg) block.initSvg();
-    if (block.render) block.render();
-    if (block.moveBy) block.moveBy(baseX, nextY);
-    nextY += 88;
-  }
-
-  const minGreetingY = nextY + 40;
-  for (const g of greetings) {
-    if (!g.getRelativeToSurfaceXY || !g.moveBy) continue;
-    const pos = g.getRelativeToSurfaceXY();
-    if (pos.y < minGreetingY) g.moveBy(0, minGreetingY - pos.y);
-  }
-
-  syncVariableDisplays();
-  updateVariableReferenceWarnings();
-  generateAndShow();
-  document.getElementById('statusBar').textContent = `Created ${missing.length} missing variable(s): ${missing.join(', ')}`;
-}
-
 function getNode(vn) {
   return _state.nodes.find(n => n.varName === vn);
 }
@@ -1861,6 +1928,17 @@ function buildConditionExpression(block) {
       const expect = block.getFieldValue('EXPECT') === 'false' ? 'false' : 'true';
       return `(_memHas(dialogObject:getOwnName(), "${key}") == ${expect})`;
     }
+    case 'npc_cond_quest_status': {
+      const questId = String(block.getFieldValue('QUEST_ID') || 'intro_delivery').replace(/"/g, '\\"');
+      const status  = block.getFieldValue('STATUS') ?? 'active';
+      return `(_memGetText(dialogObject:getOwnName(), "${questStatusKey(questId)}", "") == ${luaStringLiteral(status)})`;
+    }
+    case 'npc_cond_quest_step': {
+      const questId = String(block.getFieldValue('QUEST_ID') || 'intro_delivery').replace(/"/g, '\\"');
+      const op      = block.getFieldValue('OP') || '==';
+      const step    = block.getFieldValue('STEP') || 0;
+      return `(_memGetNumber(dialogObject:getOwnName(), "${questStepKey(questId)}", 0) ${op} ${step})`;
+    }
     case 'npc_cond_and': {
       const a = buildConditionExpression(block.getInputTargetBlock('A'));
       const b = buildConditionExpression(block.getInputTargetBlock('B'));
@@ -1882,6 +1960,14 @@ function buildConditionExpression(block) {
 
 function luaStringLiteral(s) {
   return `"${String(s ?? '').replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+}
+
+function questStatusKey(questId) {
+  return `quest:${questId}:status`;
+}
+
+function questStepKey(questId) {
+  return `quest:${questId}:step`;
 }
 
 function makeSellAction(item, priceExpr, parentVarName, meta = {}) {
@@ -2366,6 +2452,74 @@ function processActionBlock(block, parentVarName) {
       waitNode.reactions = [{ code: 0, target: successVn }];
       return waitVn;
     }
+    case 'npc_quest_start': {
+      const questId = block.getFieldValue('QUEST_ID');
+      const step    = block.getFieldValue('STEP');
+      const success = block.getFieldValue('SUCCESS');
+      const hookFn = `questStartHook_${sanitizeIdentPart(questId)}`;
+      registerHook(hookFn, [
+        `local player = dialogObject:getOwnName()`,
+        `_memSet(player, ${luaStringLiteral(questStatusKey(questId))}, "active")`,
+        `_memSet(player, ${luaStringLiteral(questStepKey(questId))}, ${step})`,
+        `return 0`,
+      ]);
+      const waitVn = makeNode('Starting quest...');
+      const successVn = makeNode(success || 'Quest started.');
+      const waitNode = getNode(waitVn);
+      waitNode.hook = hookFn;
+      waitNode.reactions = [{ code: 0, target: successVn }];
+      return waitVn;
+    }
+    case 'npc_quest_set_step': {
+      const questId = block.getFieldValue('QUEST_ID');
+      const step    = block.getFieldValue('STEP');
+      const success = block.getFieldValue('SUCCESS');
+      const hookFn = `questSetStepHook_${sanitizeIdentPart(questId)}_${sanitizeIdentPart(step)}`;
+      registerHook(hookFn, [
+        `local player = dialogObject:getOwnName()`,
+        `_memSet(player, ${luaStringLiteral(questStatusKey(questId))}, "active")`,
+        `_memSet(player, ${luaStringLiteral(questStepKey(questId))}, ${step})`,
+        `return 0`,
+      ]);
+      const waitVn = makeNode('Updating quest...');
+      const successVn = makeNode(success || 'Quest updated.');
+      const waitNode = getNode(waitVn);
+      waitNode.hook = hookFn;
+      waitNode.reactions = [{ code: 0, target: successVn }];
+      return waitVn;
+    }
+    case 'npc_quest_complete': {
+      const questId = block.getFieldValue('QUEST_ID');
+      const success = block.getFieldValue('SUCCESS');
+      const hookFn = `questCompleteHook_${sanitizeIdentPart(questId)}`;
+      registerHook(hookFn, [
+        `local player = dialogObject:getOwnName()`,
+        `_memSet(player, ${luaStringLiteral(questStatusKey(questId))}, "complete")`,
+        `return 0`,
+      ]);
+      const waitVn = makeNode('Completing quest...');
+      const successVn = makeNode(success || 'Quest complete!');
+      const waitNode = getNode(waitVn);
+      waitNode.hook = hookFn;
+      waitNode.reactions = [{ code: 0, target: successVn }];
+      return waitVn;
+    }
+    case 'npc_quest_fail': {
+      const questId = block.getFieldValue('QUEST_ID');
+      const success = block.getFieldValue('SUCCESS');
+      const hookFn = `questFailHook_${sanitizeIdentPart(questId)}`;
+      registerHook(hookFn, [
+        `local player = dialogObject:getOwnName()`,
+        `_memSet(player, ${luaStringLiteral(questStatusKey(questId))}, "failed")`,
+        `return 0`,
+      ]);
+      const waitVn = makeNode('Updating quest...');
+      const successVn = makeNode(success || 'Quest failed.');
+      const waitNode = getNode(waitVn);
+      waitNode.hook = hookFn;
+      waitNode.reactions = [{ code: 0, target: successVn }];
+      return waitVn;
+    }
     case 'npc_custom_hook': {
       const name    = block.getFieldValue('NAME');
       const body    = block.getFieldValue('BODY');
@@ -2456,6 +2610,12 @@ function generateLua(scriptName) {
     'npc_cond_memory_number',
     'npc_cond_memory_text',
     'npc_cond_memory_exists',
+    'npc_quest_start',
+    'npc_quest_set_step',
+    'npc_quest_complete',
+    'npc_quest_fail',
+    'npc_cond_quest_status',
+    'npc_cond_quest_step',
   ].includes(b.type));
   if (usesMemory) {
     _state.dbPath = _state.dbPath || '/StarMade/server-database/npc-memory.db';
@@ -3470,6 +3630,29 @@ function buildConditionBlockFromExpression(expr) {
     };
   }
 
+  m = expr.match(/^_memGetText\(dialogObject:getOwnName\(\),\s*"quest:([^":]+):status",\s*""\)\s*==\s*"([^"]*)"$/);
+  if (m) {
+    return {
+      type: 'npc_cond_quest_status',
+      fields: {
+        QUEST_ID: m[1],
+        STATUS: m[2],
+      }
+    };
+  }
+
+  m = expr.match(/^_memGetNumber\(dialogObject:getOwnName\(\),\s*"quest:([^":]+):step",\s*0\)\s*(>=|<=|==|~=|>|<)\s*(-?\d+(?:\.\d+)?)$/);
+  if (m) {
+    return {
+      type: 'npc_cond_quest_step',
+      fields: {
+        QUEST_ID: m[1],
+        OP: m[2],
+        STEP: Number(m[3]),
+      }
+    };
+  }
+
   return { type: 'npc_cond_custom', fields: { EXPR: expr } };
 }
 
@@ -3668,8 +3851,23 @@ function buildActionBlock(funcName, body, boundParams, argDefs, constVals, react
     }, reactionMeta);
   }
 
-  // ── SQLite / memory actions ───────────────────────────────────────────────
-  let m2 = body.match(/_memSet\(player,\s*"([^"]+)",\s*(.+)\)/);
+  // ── SQLite / memory / quest actions ──────────────────────────────────────
+  let m2 = body.match(/_memSet\(player,\s*"quest:([^":]+):status",\s*"active"\)[\s\S]*?_memSet\(player,\s*"quest:\1:step",\s*(-?\d+(?:\.\d+)?)\)/);
+  if (m2) {
+    if (/Quest updated|Updating quest/.test(reactionMeta.waitText || '')) {
+      return { type: 'npc_quest_set_step', fields: { QUEST_ID: m2[1], STEP: Number(m2[2]), SUCCESS: reactionText(reactionMeta, 0, 'Quest updated.') } };
+    }
+    return { type: 'npc_quest_start', fields: { QUEST_ID: m2[1], STEP: Number(m2[2]), SUCCESS: reactionText(reactionMeta, 0, 'Quest started.') } };
+  }
+  m2 = body.match(/_memSet\(player,\s*"quest:([^":]+):status",\s*"complete"\)/);
+  if (m2) {
+    return { type: 'npc_quest_complete', fields: { QUEST_ID: m2[1], SUCCESS: reactionText(reactionMeta, 0, 'Quest complete!') } };
+  }
+  m2 = body.match(/_memSet\(player,\s*"quest:([^":]+):status",\s*"failed"\)/);
+  if (m2) {
+    return { type: 'npc_quest_fail', fields: { QUEST_ID: m2[1], SUCCESS: reactionText(reactionMeta, 0, 'Quest failed.') } };
+  }
+  m2 = body.match(/_memSet\(player,\s*"([^"]+)",\s*(.+)\)/);
   if (m2) {
     let mode = 'raw', value = m2[2].trim();
     if (/^".*"$/.test(value)) { mode = 'text'; value = value.slice(1, -1).replace(/\\"/g, '"'); }
