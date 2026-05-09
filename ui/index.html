@@ -326,6 +326,12 @@
     <block type="npc_check_credits"></block>
     <block type="npc_check_player_value"></block>
     <block type="npc_check_flag"></block>
+    <sep></sep>
+    <block type="npc_check_rep"></block>
+    <block type="npc_check_cooldown"></block>
+    <block type="npc_check_stock"></block>
+    <block type="npc_check_flag_db"></block>
+    <block type="npc_check_world"></block>
     <block type="npc_is_at_block"></block>
     <block type="npc_check_custom_condition"></block>
     <sep></sep>
@@ -348,6 +354,11 @@
     <block type="npc_custom_hook"></block>
     <block type="npc_give_meta_item"></block>
     <block type="npc_get_info"></block>
+    <sep></sep>
+    <block type="npc_get_rep"></block>
+    <block type="npc_get_cooldown_remaining"></block>
+    <block type="npc_get_stock"></block>
+    <block type="npc_get_world"></block>
   </category>
 </xml>
 
@@ -1041,6 +1052,247 @@ Blockly.Blocks['npc_cond_quest_step'] = {
     this.setOutput(true, 'npc_condition');
     this.setColour('#d35400');
     this.setTooltip('QUEST STEP CONDITION\nChecks the numeric quest step stored in built-in memory.');
+  }
+};
+
+// ── npc_check_rep ────────────────────────────────────────────────────────────
+Blockly.Blocks['npc_check_rep'] = {
+  init() {
+    this.appendDummyInput()
+      .appendField('⭐ Check réputation envers')
+      .appendField(new Blockly.FieldTextInput('trading_guild'), 'NPC_ID')
+      .appendField(new Blockly.FieldDropdown([
+        ['≥','>='], ['>','>'], ['=','=='], ['≠','~='], ['≤','<='], ['<','<']
+      ]), 'OP')
+      .appendField(new Blockly.FieldNumber(0, -9999, 9999), 'VALUE');
+    this.appendDummyInput()
+      .appendField('Si vrai →')
+      .appendField(new Blockly.FieldTextInput('Accès accordé.'), 'SUCCESS');
+    this.appendDummyInput()
+      .appendField('Si faux →')
+      .appendField(new Blockly.FieldTextInput('Réputation insuffisante.'), 'FAIL');
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour('#c0392b');
+    this.setTooltip('CHECK RÉPUTATION\nVérifie la réputation du joueur envers un NPC/faction et branche sur success ou fail.');
+  }
+};
+
+// ── npc_check_cooldown ────────────────────────────────────────────────────────
+Blockly.Blocks['npc_check_cooldown'] = {
+  init() {
+    this.appendDummyInput()
+      .appendField('⏱️ Check cooldown')
+      .appendField(new Blockly.FieldTextInput('daily_delivery'), 'ACTION_ID')
+      .appendField('est')
+      .appendField(new Blockly.FieldDropdown([
+        ['expiré (joueur peut agir)', 'expired'],
+        ['actif (joueur doit attendre)', 'active'],
+      ]), 'STATE');
+    this.appendDummyInput()
+      .appendField('Si vrai →')
+      .appendField(new Blockly.FieldTextInput('Vous pouvez continuer.'), 'SUCCESS');
+    this.appendDummyInput()
+      .appendField('Si faux →')
+      .appendField(new Blockly.FieldTextInput('Vous devez encore attendre.'), 'FAIL');
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour('#1abc9c');
+    this.setTooltip('CHECK COOLDOWN\nVérifie si un cooldown est expiré (joueur disponible) ou encore actif.');
+  }
+};
+
+// ── npc_check_stock ───────────────────────────────────────────────────────────
+Blockly.Blocks['npc_check_stock'] = {
+  init() {
+    this.appendDummyInput()
+      .appendField('📦 Check stock')
+      .appendField(new Blockly.FieldTextInput('guild_shop'), 'SHOP_ID')
+      .appendField('item')
+      .appendField(new Blockly.FieldNumber(424, 0), 'ITEM_TYPE')
+      .appendField(new Blockly.FieldDropdown([
+        ['≥','>='], ['>','>'], ['=','=='], ['≠','~='], ['≤','<='], ['<','<']
+      ]), 'OP')
+      .appendField(new Blockly.FieldNumber(1, 0), 'VALUE');
+    this.appendDummyInput()
+      .appendField('Si vrai →')
+      .appendField(new Blockly.FieldTextInput('En stock.'), 'SUCCESS');
+    this.appendDummyInput()
+      .appendField('Si faux →')
+      .appendField(new Blockly.FieldTextInput('Rupture de stock.'), 'FAIL');
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour('#2980b9');
+    this.setTooltip('CHECK STOCK\nVérifie la quantité disponible d\'un item dans une boutique et branche sur success ou fail.');
+  }
+};
+
+// ── npc_check_flag_db ─────────────────────────────────────────────────────────
+Blockly.Blocks['npc_check_flag_db'] = {
+  init() {
+    this.appendDummyInput()
+      .appendField('🏳️ Check flag DB')
+      .appendField(new Blockly.FieldTextInput('first_visit'), 'FLAG_NAME')
+      .appendField('est')
+      .appendField(new Blockly.FieldDropdown([
+        ['true (activé)', 'true'],
+        ['false (désactivé)', 'false'],
+      ]), 'VALUE');
+    this.appendDummyInput()
+      .appendField('Si vrai →')
+      .appendField(new Blockly.FieldTextInput('Condition remplie.'), 'SUCCESS');
+    this.appendDummyInput()
+      .appendField('Si faux →')
+      .appendField(new Blockly.FieldTextInput('Condition non remplie.'), 'FAIL');
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour('#8e44ad');
+    this.setTooltip('CHECK FLAG DB\nVérifie la valeur d\'un flag persistant par joueur et branche sur success ou fail.');
+  }
+};
+
+// ── npc_check_world ───────────────────────────────────────────────────────────
+Blockly.Blocks['npc_check_world'] = {
+  init() {
+    this.appendDummyInput()
+      .appendField('🌍 Check état mondial')
+      .appendField(new Blockly.FieldTextInput('guild_event_active'), 'KEY')
+      .appendField(new Blockly.FieldDropdown([
+        ['= texte','==text'], ['≠ texte','~=text'],
+        ['≥ nombre','>=num'], ['> nombre','>num'],
+        ['= nombre','==num'], ['≤ nombre','<=num'], ['< nombre','<num'],
+      ]), 'OP')
+      .appendField(new Blockly.FieldTextInput('true'), 'VALUE');
+    this.appendDummyInput()
+      .appendField('Si vrai →')
+      .appendField(new Blockly.FieldTextInput('Événement actif.'), 'SUCCESS');
+    this.appendDummyInput()
+      .appendField('Si faux →')
+      .appendField(new Blockly.FieldTextInput('Pas d\'événement en cours.'), 'FAIL');
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour('#7f8c8d');
+    this.setTooltip('CHECK WORLD STATE\nVérifie la valeur d\'un état global et branche sur success ou fail.');
+  }
+};
+
+// ── npc_get_rep ───────────────────────────────────────────────────────────────
+Blockly.Blocks['npc_get_rep'] = {
+  init() {
+    this.appendDummyInput()
+      .appendField('⭐ Afficher réputation envers')
+      .appendField(new Blockly.FieldTextInput('trading_guild'), 'NPC_ID');
+    this.appendDummyInput()
+      .appendField('Texte (%s = valeur)')
+      .appendField(new Blockly.FieldTextInput('Votre réputation : %s'), 'TEXT');
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour('#c0392b');
+    this.setTooltip('GET RÉPUTATION\nAffiche la réputation du joueur envers un NPC dans le dialog.\nUtilisez %s dans le texte pour la valeur.');
+  }
+};
+
+// ── npc_get_cooldown_remaining ────────────────────────────────────────────────
+Blockly.Blocks['npc_get_cooldown_remaining'] = {
+  init() {
+    this.appendDummyInput()
+      .appendField('⏱️ Afficher temps restant cooldown')
+      .appendField(new Blockly.FieldTextInput('daily_delivery'), 'ACTION_ID');
+    this.appendDummyInput()
+      .appendField('Texte (%s = secondes restantes)')
+      .appendField(new Blockly.FieldTextInput('Revenir dans %s secondes.'), 'TEXT');
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour('#1abc9c');
+    this.setTooltip('GET COOLDOWN REMAINING\nAffiche le temps restant d\'un cooldown en secondes dans le dialog.');
+  }
+};
+
+// ── npc_get_stock ─────────────────────────────────────────────────────────────
+Blockly.Blocks['npc_get_stock'] = {
+  init() {
+    this.appendDummyInput()
+      .appendField('📦 Afficher stock shop')
+      .appendField(new Blockly.FieldTextInput('guild_shop'), 'SHOP_ID')
+      .appendField('item')
+      .appendField(new Blockly.FieldNumber(424, 0), 'ITEM_TYPE');
+    this.appendDummyInput()
+      .appendField('Texte (%s = quantité)')
+      .appendField(new Blockly.FieldTextInput('Stock disponible : %s'), 'TEXT');
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour('#2980b9');
+    this.setTooltip('GET STOCK\nAffiche la quantité disponible d\'un item dans la boutique dans le dialog.');
+  }
+};
+
+// ── npc_get_world ─────────────────────────────────────────────────────────────
+Blockly.Blocks['npc_get_world'] = {
+  init() {
+    this.appendDummyInput()
+      .appendField('🌍 Afficher état mondial clé')
+      .appendField(new Blockly.FieldTextInput('guild_event_name'), 'KEY')
+      .appendField('défaut')
+      .appendField(new Blockly.FieldTextInput('aucun'), 'DEFAULT');
+    this.appendDummyInput()
+      .appendField('Texte (%s = valeur)')
+      .appendField(new Blockly.FieldTextInput('Événement actuel : %s'), 'TEXT');
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour('#7f8c8d');
+    this.setTooltip('GET WORLD STATE\nAffiche la valeur d\'un état global dans le dialog.');
+  }
+};
+
+// ── npc_cooldown_clear ────────────────────────────────────────────────────────
+Blockly.Blocks['npc_cooldown_clear'] = {
+  init() {
+    this.appendDummyInput()
+      .appendField('⏱️ Cooldown CLEAR id')
+      .appendField(new Blockly.FieldTextInput('daily_delivery'), 'ACTION_ID');
+    this.appendDummyInput()
+      .appendField('Success text')
+      .appendField(new Blockly.FieldTextInput('Cooldown réinitialisé.'), 'SUCCESS');
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour('#1abc9c');
+    this.setTooltip('COOLDOWN CLEAR\nSupprime un cooldown (le joueur peut de nouveau effectuer l\'action).');
+  }
+};
+
+// ── npc_rep_reset ─────────────────────────────────────────────────────────────
+Blockly.Blocks['npc_rep_reset'] = {
+  init() {
+    this.appendDummyInput()
+      .appendField('⭐ Réputation RESET npc')
+      .appendField(new Blockly.FieldTextInput('trading_guild'), 'NPC_ID');
+    this.appendDummyInput()
+      .appendField('Success text')
+      .appendField(new Blockly.FieldTextInput('Réputation réinitialisée.'), 'SUCCESS');
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour('#c0392b');
+    this.setTooltip('RÉPUTATION RESET\nRemet la réputation du joueur à 0 envers un NPC/faction.');
+  }
+};
+
+// ── npc_stock_reset ───────────────────────────────────────────────────────────
+Blockly.Blocks['npc_stock_reset'] = {
+  init() {
+    this.appendDummyInput()
+      .appendField('📦 Stock RESET shop')
+      .appendField(new Blockly.FieldTextInput('guild_shop'), 'SHOP_ID')
+      .appendField('item')
+      .appendField(new Blockly.FieldNumber(424, 0), 'ITEM_TYPE')
+      .appendField('qté')
+      .appendField(new Blockly.FieldNumber(5, 0), 'QTY');
+    this.appendDummyInput()
+      .appendField('Success text')
+      .appendField(new Blockly.FieldTextInput('Stock réinitialisé.'), 'SUCCESS');
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour('#2980b9');
+    this.setTooltip('STOCK RESET\nForce la quantité d\'un item en stock (recharge complète ou correction).');
   }
 };
 
@@ -2792,6 +3044,188 @@ function processActionBlock(block, parentVarName) {
       ]);
       const waitVn    = makeNode('Lecture état mondial...');
       const successVn = makeNode(success.replace('%s', `"+_worldGet(${JSON.stringify(key)},${JSON.stringify(defVal)})+"`));
+      const waitNode  = getNode(waitVn);
+      waitNode.hook      = hookFn;
+      waitNode.reactions = [{ code: 0, target: successVn }];
+      return waitVn;
+    }
+    case 'npc_check_rep': {
+      const npcId   = block.getFieldValue('NPC_ID');
+      const op      = block.getFieldValue('OP') || '>=';
+      const value   = Number(block.getFieldValue('VALUE') || 0);
+      const success = block.getFieldValue('SUCCESS') || 'Accès accordé.';
+      const fail    = block.getFieldValue('FAIL')    || 'Réputation insuffisante.';
+      const hookFn  = `checkRepHook_${sanitizeIdentPart(npcId)}_${String(op).replace(/\W/g,'_')}_${value}`;
+      return makeBinaryConditionAction(hookFn, [
+        `local player = dialogObject:getOwnName()`,
+        `if _repGet(player, ${luaStringLiteral(npcId)}) ${op} ${value} then return 0 end`,
+        `return -1`,
+      ], 'Vérification réputation...', success, fail);
+    }
+    case 'npc_check_cooldown': {
+      const actionId = block.getFieldValue('ACTION_ID');
+      const state    = block.getFieldValue('STATE') || 'expired';
+      const success  = block.getFieldValue('SUCCESS') || 'Vous pouvez continuer.';
+      const fail     = block.getFieldValue('FAIL')    || 'Vous devez encore attendre.';
+      const hookFn   = `checkCooldownHook_${sanitizeIdentPart(actionId)}_${state}`;
+      const cond     = state === 'expired'
+        ? `not _cooldownActive(player, ${luaStringLiteral(actionId)})`
+        : `_cooldownActive(player, ${luaStringLiteral(actionId)})`;
+      return makeBinaryConditionAction(hookFn, [
+        `local player = dialogObject:getOwnName()`,
+        `if ${cond} then return 0 end`,
+        `return -1`,
+      ], 'Vérification cooldown...', success, fail);
+    }
+    case 'npc_check_stock': {
+      const shopId   = block.getFieldValue('SHOP_ID');
+      const itemType = Number(block.getFieldValue('ITEM_TYPE') || 0);
+      const op       = block.getFieldValue('OP') || '>=';
+      const value    = Number(block.getFieldValue('VALUE') || 1);
+      const success  = block.getFieldValue('SUCCESS') || 'En stock.';
+      const fail     = block.getFieldValue('FAIL')    || 'Rupture de stock.';
+      const hookFn   = `checkStockHook_${sanitizeIdentPart(shopId)}_${itemType}`;
+      return makeBinaryConditionAction(hookFn, [
+        `if _stockGet(${luaStringLiteral(shopId)}, ${itemType}) ${op} ${value} then return 0 end`,
+        `return -1`,
+      ], 'Vérification stock...', success, fail);
+    }
+    case 'npc_check_flag_db': {
+      const flagName = block.getFieldValue('FLAG_NAME');
+      const value    = block.getFieldValue('VALUE') || 'true';
+      const success  = block.getFieldValue('SUCCESS') || 'Condition remplie.';
+      const fail     = block.getFieldValue('FAIL')    || 'Condition non remplie.';
+      const hookFn   = `checkFlagDbHook_${sanitizeIdentPart(flagName)}_${value}`;
+      return makeBinaryConditionAction(hookFn, [
+        `local player = dialogObject:getOwnName()`,
+        `if _flagGet(player, ${luaStringLiteral(flagName)}) == ${value} then return 0 end`,
+        `return -1`,
+      ], 'Vérification flag...', success, fail);
+    }
+    case 'npc_check_world': {
+      const key   = block.getFieldValue('KEY');
+      const op    = block.getFieldValue('OP') || '==text';
+      const value = block.getFieldValue('VALUE') || 'true';
+      const success = block.getFieldValue('SUCCESS') || 'Événement actif.';
+      const fail    = block.getFieldValue('FAIL')    || "Pas d'événement en cours.";
+      const hookFn  = `checkWorldHook_${sanitizeIdentPart(key)}`;
+      let condLine;
+      if (op.endsWith('text')) {
+        const luaOp = op.replace('text', '').trim();
+        condLine = `if _worldGet(${luaStringLiteral(key)}, "") ${luaOp} ${luaStringLiteral(value)} then return 0 end`;
+      } else {
+        const luaOp = op.replace('num', '').trim();
+        condLine = `if _worldGetNumber(${luaStringLiteral(key)}, 0) ${luaOp} ${Number(value)||0} then return 0 end`;
+      }
+      return makeBinaryConditionAction(hookFn, [
+        condLine,
+        `return -1`,
+      ], 'Vérification état mondial...', success, fail);
+    }
+    case 'npc_get_rep': {
+      const npcId  = block.getFieldValue('NPC_ID');
+      const text   = block.getFieldValue('TEXT') || 'Votre réputation : %s';
+      const hookFn = `getRepHook_${sanitizeIdentPart(npcId)}`;
+      registerHook(hookFn, [
+        `local player = dialogObject:getOwnName()`,
+        `local val = _repGet(player, ${luaStringLiteral(npcId)})`,
+        `return 0`,
+      ]);
+      const waitVn   = makeNode(text.replace('%s', '...'));
+      const waitNode = getNode(waitVn);
+      waitNode.hook  = hookFn;
+      return waitVn;
+    }
+    case 'npc_get_cooldown_remaining': {
+      const actionId = block.getFieldValue('ACTION_ID');
+      const text     = block.getFieldValue('TEXT') || 'Revenir dans %s secondes.';
+      const hookFn   = `getCooldownHook_${sanitizeIdentPart(actionId)}`;
+      registerHook(hookFn, [
+        `local player = dialogObject:getOwnName()`,
+        `local rem = math.ceil(_cooldownRemaining(player, ${luaStringLiteral(actionId)}) / 1000)`,
+        `return 0`,
+      ]);
+      const waitVn   = makeNode(text.replace('%s', '...'));
+      const waitNode = getNode(waitVn);
+      waitNode.hook  = hookFn;
+      return waitVn;
+    }
+    case 'npc_get_stock': {
+      const shopId   = block.getFieldValue('SHOP_ID');
+      const itemType = Number(block.getFieldValue('ITEM_TYPE') || 0);
+      const text     = block.getFieldValue('TEXT') || 'Stock disponible : %s';
+      const hookFn   = `getStockHook_${sanitizeIdentPart(shopId)}_${itemType}`;
+      registerHook(hookFn, [
+        `local val = _stockGet(${luaStringLiteral(shopId)}, ${itemType})`,
+        `return 0`,
+      ]);
+      const waitVn   = makeNode(text.replace('%s', '...'));
+      const waitNode = getNode(waitVn);
+      waitNode.hook  = hookFn;
+      return waitVn;
+    }
+    case 'npc_get_world': {
+      const key    = block.getFieldValue('KEY');
+      const defVal = block.getFieldValue('DEFAULT') || '';
+      const text   = block.getFieldValue('TEXT') || 'Événement actuel : %s';
+      const hookFn = `getWorldHook_${sanitizeIdentPart(key)}`;
+      registerHook(hookFn, [
+        `local val = _worldGet(${luaStringLiteral(key)}, ${luaStringLiteral(defVal)})`,
+        `return 0`,
+      ]);
+      const waitVn   = makeNode(text.replace('%s', '...'));
+      const waitNode = getNode(waitVn);
+      waitNode.hook  = hookFn;
+      return waitVn;
+    }
+    case 'npc_cooldown_clear': {
+      const actionId = block.getFieldValue('ACTION_ID');
+      const success  = block.getFieldValue('SUCCESS') || 'Cooldown réinitialisé.';
+      const hookFn   = `cooldownClearHook_${sanitizeIdentPart(actionId)}`;
+      registerHook(hookFn, [
+        `local player = dialogObject:getOwnName()`,
+        `_dbExec("DELETE FROM npc_cooldowns WHERE player=? AND action_id=?", player, ${luaStringLiteral(actionId)})`,
+        `return 0`,
+      ]);
+      const waitVn    = makeNode('Réinitialisation cooldown...');
+      const successVn = makeNode(success);
+      const waitNode  = getNode(waitVn);
+      waitNode.hook      = hookFn;
+      waitNode.reactions = [{ code: 0, target: successVn }];
+      return waitVn;
+    }
+    case 'npc_rep_reset': {
+      const npcId   = block.getFieldValue('NPC_ID');
+      const success = block.getFieldValue('SUCCESS') || 'Réputation réinitialisée.';
+      const hookFn  = `repResetHook_${sanitizeIdentPart(npcId)}`;
+      registerHook(hookFn, [
+        `local player = dialogObject:getOwnName()`,
+        `_repSet(player, ${luaStringLiteral(npcId)}, 0)`,
+        `return 0`,
+      ]);
+      const waitVn    = makeNode('Réinitialisation réputation...');
+      const successVn = makeNode(success);
+      const waitNode  = getNode(waitVn);
+      waitNode.hook      = hookFn;
+      waitNode.reactions = [{ code: 0, target: successVn }];
+      return waitVn;
+    }
+    case 'npc_stock_reset': {
+      const shopId   = block.getFieldValue('SHOP_ID');
+      const itemType = Number(block.getFieldValue('ITEM_TYPE') || 0);
+      const qty      = Number(block.getFieldValue('QTY') || 0);
+      const success  = block.getFieldValue('SUCCESS') || 'Stock réinitialisé.';
+      const hookFn   = `stockResetHook_${sanitizeIdentPart(shopId)}_${itemType}`;
+      registerHook(hookFn, [
+        `if _dbGet("SELECT 1 FROM npc_shop_stock WHERE shop_id=? AND item_type=?", ${luaStringLiteral(shopId)}, ${itemType}) == nil then`,
+        `  _dbExec("INSERT INTO npc_shop_stock(shop_id,item_type,quantity) VALUES(?,?,?)", ${luaStringLiteral(shopId)}, ${itemType}, ${qty})`,
+        `else`,
+        `  _dbExec("UPDATE npc_shop_stock SET quantity=? WHERE shop_id=? AND item_type=?", ${qty}, ${luaStringLiteral(shopId)}, ${itemType})`,
+        `end`,
+        `return 0`,
+      ]);
+      const waitVn    = makeNode('Réinitialisation stock...');
+      const successVn = makeNode(success);
       const waitNode  = getNode(waitVn);
       waitNode.hook      = hookFn;
       waitNode.reactions = [{ code: 0, target: successVn }];
