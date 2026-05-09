@@ -193,7 +193,14 @@
   <label style="font-size:0.8rem;color:#888;margin-right:4px">Script name:</label>
   <input id="scriptName" type="text" value="my-npc" placeholder="my-npc" />
   <button class="btn btn-secondary" onclick="clearWorkspace()" title="Clear the workspace">🗑 Clear</button>
-  <button class="btn btn-secondary" onclick="loadExample()" title="Load a built-in example">📄 Example</button>
+  <select id="exampleSelect" class="btn btn-secondary" title="Choose a built-in example" style="padding:4px 8px;cursor:pointer;">
+    <option value="merchant">📄 Merchant NPC</option>
+    <option value="quest_giver">📜 Quest Giver</option>
+    <option value="daily_trader">⏱️ Daily Trader</option>
+    <option value="guard">🛡️ Reputation Guard</option>
+    <option value="inventory_quest">🎒 Inventory Quest</option>
+  </select>
+  <button class="btn btn-secondary" onclick="loadExample(document.getElementById('exampleSelect').value)" title="Load selected example">Load</button>
   <button class="btn btn-secondary" onclick="loadWorkspace()" title="Load a saved workspace (.json)">📂 Load</button>
   <button class="btn btn-secondary" onclick="saveWorkspace()" title="Save the current workspace as .json">💾 Save</button>
   <button class="btn btn-success" onclick="copyLua()" title="Copy Lua to clipboard">📋 Copy</button>
@@ -288,6 +295,11 @@
     <block type="npc_spawn_crew"></block>
   </category>
   <category name="🛒 Items" colour="#f39c12">
+    <block type="npc_give_credits"></block>
+    <block type="npc_check_inventory"></block>
+    <block type="npc_take_item"></block>
+    <block type="npc_send_message"></block>
+    <sep></sep>
     <block type="npc_sell_item"></block>
     <block type="npc_give_type"></block>
   </category>
@@ -1285,7 +1297,7 @@ Blockly.Blocks['npc_stock_reset'] = {
       .appendField('item')
       .appendField(new Blockly.FieldNumber(424, 0), 'ITEM_TYPE')
       .appendField('qty')
-      .appendField(new Blockly.FieldNumber(5, 0), 'QTY';
+      .appendField(new Blockly.FieldNumber(5, 0), 'QTY');
     this.appendDummyInput()
       .appendField('Success text')
       .appendField(new Blockly.FieldTextInput('Stock reset.'), 'SUCCESS');
@@ -1293,6 +1305,104 @@ Blockly.Blocks['npc_stock_reset'] = {
     this.setNextStatement(true, null);
     this.setColour('#2980b9');
     this.setTooltip('STOCK RESET\nForces the quantity of a shop item (full restock or manual correction).');
+  }
+};
+
+// ── npc_give_credits ─────────────────────────────────────────────────────────
+Blockly.Blocks['npc_give_credits'] = {
+  init() {
+    this.appendDummyInput()
+      .appendField('💰 Give credits')
+      .appendField(new Blockly.FieldNumber(10000, -999999999, 999999999), 'AMOUNT');
+    this.appendDummyInput()
+      .appendField('Success text')
+      .appendField(new Blockly.FieldTextInput('Credits transferred.'), 'SUCCESS');
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour('#16a085');
+    this.setTooltip(
+      'GIVE CREDITS\nAdds (or removes if negative) credits to the player.\n\n' +
+      'Uses: PlayerState.setCredits(getCredits() + amount)\n\n' +
+      'Tip: use a negative value to charge the player without a condition check.'
+    );
+  }
+};
+
+// ── npc_check_inventory ───────────────────────────────────────────────────────
+Blockly.Blocks['npc_check_inventory'] = {
+  init() {
+    this.appendDummyInput()
+      .appendField('🎒 Check inventory has item type')
+      .appendField(new Blockly.FieldNumber(424, 0), 'ITEM_TYPE')
+      .appendField('qty ≥')
+      .appendField(new Blockly.FieldNumber(1, 1), 'COUNT');
+    this.appendDummyInput()
+      .appendField('If has item →')
+      .appendField(new Blockly.FieldTextInput('You have the item.'), 'SUCCESS');
+    this.appendDummyInput()
+      .appendField('If missing →')
+      .appendField(new Blockly.FieldTextInput('You do not have the required item.'), 'FAIL');
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour('#f39c12');
+    this.setTooltip(
+      'CHECK INVENTORY\nChecks if the player has at least N of an item type in their inventory.\n\n' +
+      'Uses: Inventory.existsInInventory(type) + getCount()\n\n' +
+      'Return 0 = has item, -1 = missing.\n' +
+      'Item type: numeric block ID (e.g. 424 = Laser Cannon).'
+    );
+  }
+};
+
+// ── npc_take_item ─────────────────────────────────────────────────────────────
+Blockly.Blocks['npc_take_item'] = {
+  init() {
+    this.appendDummyInput()
+      .appendField('🎒 Take item type')
+      .appendField(new Blockly.FieldNumber(424, 0), 'ITEM_TYPE')
+      .appendField('qty')
+      .appendField(new Blockly.FieldNumber(1, 1), 'COUNT');
+    this.appendDummyInput()
+      .appendField('If taken →')
+      .appendField(new Blockly.FieldTextInput('Item received.'), 'SUCCESS');
+    this.appendDummyInput()
+      .appendField('If not found →')
+      .appendField(new Blockly.FieldTextInput('Item not found in inventory.'), 'FAIL');
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour('#f39c12');
+    this.setTooltip(
+      'TAKE ITEM\nRemoves N of an item from the player inventory.\n\n' +
+      'Checks first: if the player has fewer than COUNT → branches to Fail.\n' +
+      'Uses: Inventory.decrementOrUpdateSlot(type, count)\n\n' +
+      'Typical use: collect quest items from the player.'
+    );
+  }
+};
+
+// ── npc_send_message ──────────────────────────────────────────────────────────
+Blockly.Blocks['npc_send_message'] = {
+  init() {
+    this.appendDummyInput()
+      .appendField('📨 Send HUD message')
+      .appendField(new Blockly.FieldDropdown([
+        ['Info (white)',    'info'],
+        ['Warning (orange)', 'warn'],
+        ['Error (red)',    'error'],
+      ]), 'TYPE');
+    this.appendDummyInput()
+      .appendField('Message')
+      .appendField(new Blockly.FieldTextInput('Quest updated!'), 'TEXT');
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour('#e74c3c');
+    this.setTooltip(
+      'SEND HUD MESSAGE\nSends a popup message to the player HUD (outside the dialog).\n\n' +
+      'Uses: PlayerState.sendServerMessage(ServerMessage)\n' +
+      'Types: INFO (white) · WARNING (orange) · ERROR (red)\n\n' +
+      'Useful for quest notifications, reward announcements, etc.\n' +
+      'Does not interrupt the dialog flow.'
+    );
   }
 };
 
@@ -3231,6 +3341,102 @@ function processActionBlock(block, parentVarName) {
       waitNode.reactions = [{ code: 0, target: successVn }];
       return waitVn;
     }
+    case 'npc_give_credits': {
+      const amount  = Number(block.getFieldValue('AMOUNT') || 0);
+      const success = block.getFieldValue('SUCCESS') || 'Credits transferred.';
+      const hookFn  = `giveCreditsHook_${amount < 0 ? 'n' + Math.abs(amount) : amount}`;
+      registerHook(hookFn, [
+        `local ps = dialogObject:getEntity()`,
+        `if ps == nil then return -1 end`,
+        `ps:setCredits(ps:getCredits() + ${amount})`,
+        `return 0`,
+      ]);
+      const waitVn    = makeNode('Transferring credits...');
+      const successVn = makeNode(success);
+      const waitNode  = getNode(waitVn);
+      waitNode.hook      = hookFn;
+      waitNode.reactions = [{ code: 0, target: successVn }];
+      return waitVn;
+    }
+    case 'npc_check_inventory': {
+      const itemType = Number(block.getFieldValue('ITEM_TYPE') || 0);
+      const count    = Number(block.getFieldValue('COUNT')     || 1);
+      const success  = block.getFieldValue('SUCCESS') || 'You have the item.';
+      const fail     = block.getFieldValue('FAIL')    || 'You do not have the required item.';
+      const hookFn   = `checkInvHook_${itemType}_${count}`;
+      return makeBinaryConditionAction(hookFn, [
+        `local inv = dialogObject:getEntity():getInventory()`,
+        `if inv == nil then return -1 end`,
+        `local total = 0`,
+        `for i = 0, inv:getActiveSlotsMax() - 1 do`,
+        `  if inv:getType(i) == ${itemType} then`,
+        `    total = total + inv:getCount(i, ${itemType})`,
+        `  end`,
+        `end`,
+        `if total >= ${count} then return 0 end`,
+        `return -1`,
+      ], 'Checking inventory...', success, fail);
+    }
+    case 'npc_take_item': {
+      const itemType = Number(block.getFieldValue('ITEM_TYPE') || 0);
+      const count    = Number(block.getFieldValue('COUNT')     || 1);
+      const success  = block.getFieldValue('SUCCESS') || 'Item received.';
+      const fail     = block.getFieldValue('FAIL')    || 'Item not found in inventory.';
+      const hookFn   = `takeItemHook_${itemType}_${count}`;
+      registerHook(hookFn, [
+        `local inv = dialogObject:getEntity():getInventory()`,
+        `if inv == nil then return -1 end`,
+        `local total = 0`,
+        `for i = 0, inv:getActiveSlotsMax() - 1 do`,
+        `  if inv:getType(i) == ${itemType} then`,
+        `    total = total + inv:getCount(i, ${itemType})`,
+        `  end`,
+        `end`,
+        `if total < ${count} then return -1 end`,
+        `local rem = ${count}`,
+        `for i = 0, inv:getActiveSlotsMax() - 1 do`,
+        `  if rem <= 0 then break end`,
+        `  if inv:getType(i) == ${itemType} then`,
+        `    local c = inv:getCount(i, ${itemType})`,
+        `    if c <= rem then`,
+        `      inv:decrementOrUpdateSlot(i, ${itemType}, c, true)`,
+        `      rem = rem - c`,
+        `    else`,
+        `      inv:decrementOrUpdateSlot(i, ${itemType}, rem, true)`,
+        `      rem = 0`,
+        `    end`,
+        `  end`,
+        `end`,
+        `return 0`,
+      ]);
+      const waitVn    = makeNode('Collecting item...');
+      const successVn = makeNode(success);
+      const failVn    = makeNode(fail);
+      const waitNode  = getNode(waitVn);
+      waitNode.hook      = hookFn;
+      waitNode.reactions = [{ code: 0, target: successVn }, { code: -1, target: failVn }];
+      return waitVn;
+    }
+    case 'npc_send_message': {
+      const msgType = block.getFieldValue('TYPE') || 'info';
+      const text    = block.getFieldValue('TEXT') || 'Quest updated!';
+      const hookFn  = `sendMsgHook_${Math.abs(hashCode(text + msgType))}`;
+      const typeMap = { info: '0', warn: '1', error: '2' };
+      const typeCode = typeMap[msgType] || '0';
+      registerHook(hookFn, [
+        `local ps = dialogObject:getEntity()`,
+        `if ps ~= nil then`,
+        `  local ServerMessage = luajava.bindClass("org.schema.schine.network.objects.remote.ServerMessage")`,
+        `  ps:sendServerMessage(luajava.newInstance("org.schema.schine.network.objects.remote.ServerMessage",`,
+        `    dialogObject:format(${luaStringLiteral(text)}), ${typeCode}, ps:getId()))`,
+        `end`,
+        `return 0`,
+      ]);
+      const waitVn   = makeNode('Sending message...');
+      const waitNode = getNode(waitVn);
+      waitNode.hook  = hookFn;
+      return waitVn;
+    }
     case 'npc_custom_hook': {
       const name    = block.getFieldValue('NAME');
       const body    = block.getFieldValue('BODY');
@@ -3906,21 +4112,16 @@ function showTab(id) {
 // ──────────────────────────────────────────────────────────────────────────────
 // EXAMPLE
 // ──────────────────────────────────────────────────────────────────────────────
-function loadExample() {
+function loadExample(name) {  // name: 'merchant'|'quest_giver'|'daily_trader'|'guard'|'inventory_quest'
   workspace.clear();
 
   // Use Blockly serialization API (v10+) — avoids deprecated Blockly.Xml
-  const state = {
-    "blocks": {
-      "languageVersion": 0,
-      "blocks": [
-        {
-          "type": "npc_greeting",
-          "x": 30, "y": 30,
-          "fields": {
-            "TEXT": "Greetings {name}! I'm {partner} of {faction}.",
-            "MS": 2000
-          },
+  const examples = {
+
+    // ── Merchant NPC ──────────────────────────────────────────────────────────
+    merchant: { "blocks": { "languageVersion": 0, "blocks": [ {
+      "type": "npc_greeting", "x": 30, "y": 30,
+      "fields": { "TEXT": "Greetings {name}! I'm {partner} of {faction}.", "MS": 2000 },
           "inputs": {
             "CHOICES": {
               "block": {
@@ -3988,7 +4189,139 @@ function loadExample() {
         }
       ]
     }
-  };
+    }},  // end merchant
+
+    // ── Quest Giver ───────────────────────────────────────────────────────────
+    quest_giver: { "blocks": { "languageVersion": 0, "blocks": [
+      {
+        "type": "npc_greeting", "x": 30, "y": 30,
+        "fields": { "TEXT": "Greetings {name}! I have a mission for you.", "MS": 2000 },
+        "inputs": { "CHOICES": { "block": {
+          "type": "npc_choice", "fields": { "LABEL": "Tell me about the mission." },
+          "inputs": { "ACTIONS": { "block": {
+            "type": "npc_quest_offer",
+            "fields": {
+              "QUEST_ID": "guild_delivery",
+              "TITLE": "Guild Delivery",
+              "OFFER_TEXT": "Deliver a message to Waldo. Will you take it?",
+              "ACCEPT_LABEL": "Yes, I'll do it!",
+              "REFUSE_LABEL": "Not now.",
+              "ACCEPT_TEXT": "Thank you! Come back once you've found him.",
+              "REFUSE_TEXT": "Come back if you change your mind.",
+              "STEP": 1
+            }
+          }}},
+          "next": { "block": {
+            "type": "npc_choice", "fields": { "LABEL": "I've found Waldo." },
+            "inputs": { "ACTIONS": { "block": {
+              "type": "npc_quest_complete",
+              "fields": {
+                "QUEST_ID": "guild_delivery",
+                "REWARD_CREDITS": 50000,
+                "REWARD_ITEM": 0,
+                "REWARD_COUNT": 0,
+                "SUCCESS": "Excellent work! Here are your 50 000 credits."
+              }
+            }}},
+            "next": { "block": { "type": "npc_goback", "fields": { "LABEL": "Goodbye." } } }
+          }}
+        }}}
+      }
+    ] } },
+
+    // ── Daily Trader ──────────────────────────────────────────────────────────
+    daily_trader: { "blocks": { "languageVersion": 0, "blocks": [
+      {
+        "type": "npc_greeting", "x": 30, "y": 30,
+        "fields": { "TEXT": "Welcome! I have daily deals for trusted traders.", "MS": 2000 },
+        "inputs": { "CHOICES": { "block": {
+          "type": "npc_choice", "fields": { "LABEL": "Buy today's special item." },
+          "inputs": { "ACTIONS": { "block": {
+            "type": "npc_check_cooldown",
+            "fields": {
+              "ACTION_ID": "daily_deal",
+              "STATE": "expired",
+              "SUCCESS": "Great choice! Here is your item.",
+              "FAIL": "You already bought today's deal. Come back tomorrow!"
+            }
+          }}},
+          "next": { "block": { "type": "npc_goback", "fields": { "LABEL": "Maybe later." } } }
+        }}}
+      },
+      {
+        "type": "npc_cooldown_set", "x": 600, "y": 30,
+        "fields": { "ACTION_ID": "daily_deal", "DURATION_SEC": 86400, "SUCCESS": "Deal recorded." }
+      }
+    ] } },
+
+    // ── Reputation Guard ─────────────────────────────────────────────────────
+    guard: { "blocks": { "languageVersion": 0, "blocks": [
+      {
+        "type": "npc_greeting", "x": 30, "y": 30,
+        "fields": { "TEXT": "Halt! State your business with the guild.", "MS": 2000 },
+        "inputs": { "CHOICES": { "block": {
+          "type": "npc_choice", "fields": { "LABEL": "I wish to enter the vault." },
+          "inputs": { "ACTIONS": { "block": {
+            "type": "npc_check_rep",
+            "fields": {
+              "NPC_ID": "trading_guild",
+              "OP": ">=",
+              "VALUE": 100,
+              "SUCCESS": "You are welcome. Proceed.",
+              "FAIL": "Your reputation is too low. Earn our trust first."
+            }
+          }}},
+          "next": { "block": {
+            "type": "npc_choice", "fields": { "LABEL": "How can I improve my reputation?" },
+            "inputs": { "ACTIONS": { "block": {
+              "type": "npc_get_rep",
+              "fields": { "NPC_ID": "trading_guild", "TEXT": "Your current reputation: %s" }
+            }}},
+            "next": { "block": { "type": "npc_goback", "fields": { "LABEL": "I'll be back." } } }
+          }}
+        }}}
+      }
+    ] } },
+
+    // ── Inventory Quest ───────────────────────────────────────────────────────
+    inventory_quest: { "blocks": { "languageVersion": 0, "blocks": [
+      {
+        "type": "npc_greeting", "x": 30, "y": 30,
+        "fields": { "TEXT": "Greetings {name}! Do you have the ore samples I requested?", "MS": 2000 },
+        "inputs": { "CHOICES": { "block": {
+          "type": "npc_choice", "fields": { "LABEL": "Yes, here are the samples." },
+          "inputs": { "ACTIONS": { "block": {
+            "type": "npc_check_inventory",
+            "fields": {
+              "ITEM_TYPE": 62,
+              "COUNT": 5,
+              "SUCCESS": "Perfect. Let me take those.",
+              "FAIL": "You don't have 5 Fatanium ore. Come back when you do."
+            }
+          }}},
+          "next": { "block": {
+            "type": "npc_choice", "fields": { "LABEL": "I need more time." },
+            "inputs": { "ACTIONS": { "block": {
+              "type": "npc_send_message",
+              "fields": { "TYPE": "info", "TEXT": "Bring 5x Fatanium Ore (item 62)." }
+            }}},
+            "next": { "block": { "type": "npc_goback", "fields": { "LABEL": "Goodbye." } } }
+          }}
+        }}}
+      },
+      {
+        "type": "npc_take_item", "x": 600, "y": 30,
+        "fields": {
+          "ITEM_TYPE": 62, "COUNT": 5,
+          "SUCCESS": "Thank you! Here are your 25 000 credits.",
+          "FAIL": "Item not found — something went wrong."
+        }
+      }
+    ] } }
+
+  };  // end examples
+
+  const state = examples[name] || examples['merchant'];
 
   try {
     Blockly.serialization.workspaces.load(state, workspace);
@@ -4928,9 +5261,9 @@ window.addEventListener('load', () => {
   // Give Blockly time to register all custom blocks before loading state
   requestAnimationFrame(() => requestAnimationFrame(() => {
     try {
-      loadExample();
+      loadExample('merchant');
     } catch (e) {
-      setTimeout(loadExample, 500);
+      setTimeout(() => loadExample('merchant'), 500);
     }
   }));
 });
