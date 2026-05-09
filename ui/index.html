@@ -1986,6 +1986,42 @@ function buildConditionExpression(block) {
       const step    = block.getFieldValue('STEP') || 0;
       return `(_questStep(dialogObject:getOwnName(), ${luaStringLiteral(questId)}) ${op} ${step})`;
     }
+    case 'npc_cond_rep': {
+      const npcId = String(block.getFieldValue('NPC_ID') || 'trading_guild').replace(/"/g, '\\"');
+      const op    = block.getFieldValue('OP') || '>=';
+      const value = block.getFieldValue('VALUE') || 0;
+      return `(_repGet(dialogObject:getOwnName(), "${npcId}") ${op} ${value})`;
+    }
+    case 'npc_cond_cooldown': {
+      const actionId = String(block.getFieldValue('ACTION_ID') || 'daily_delivery').replace(/"/g, '\\"');
+      const state    = block.getFieldValue('STATE') || 'active';
+      if (state === 'active') return `(_cooldownActive(dialogObject:getOwnName(), "${actionId}") == true)`;
+      return `(_cooldownActive(dialogObject:getOwnName(), "${actionId}") == false)`;
+    }
+    case 'npc_cond_stock': {
+      const shopId   = String(block.getFieldValue('SHOP_ID') || 'guild_shop').replace(/"/g, '\\"');
+      const itemType = Number(block.getFieldValue('ITEM_TYPE') || 0);
+      const op       = block.getFieldValue('OP') || '>=';
+      const value    = block.getFieldValue('VALUE') || 1;
+      return `(_stockGet("${shopId}", ${itemType}) ${op} ${value})`;
+    }
+    case 'npc_cond_flag_db': {
+      const flagName = String(block.getFieldValue('FLAG_NAME') || 'first_visit').replace(/"/g, '\\"');
+      const value    = block.getFieldValue('VALUE') || 'true';
+      return `(_flagGet(dialogObject:getOwnName(), "${flagName}") == ${value})`;
+    }
+    case 'npc_cond_world': {
+      const key   = String(block.getFieldValue('KEY') || 'guild_event_active').replace(/"/g, '\\"');
+      const op    = block.getFieldValue('OP') || '==text';
+      const value = block.getFieldValue('VALUE') || 'true';
+      if (op.endsWith('text')) {
+        const luaOp = op.replace('text', '').trim();
+        return `(_worldGet("${key}", "") ${luaOp} ${luaStringLiteral(value)})`;
+      } else {
+        const luaOp = op.replace('num', '').trim();
+        return `(_worldGetNumber("${key}", 0) ${luaOp} ${Number(value) || 0})`;
+      }
+    }
     case 'npc_cond_and': {
       const a = buildConditionExpression(block.getInputTargetBlock('A'));
       const b = buildConditionExpression(block.getInputTargetBlock('B'));
@@ -2604,6 +2640,163 @@ function processActionBlock(block, parentVarName) {
       offerNode.choices.push({ label: refuseLabel, target: refuseVn });
       return offerVn;
     }
+    case 'npc_rep_add': {
+      const npcId  = block.getFieldValue('NPC_ID');
+      const delta  = Number(block.getFieldValue('DELTA') || 10);
+      const success = block.getFieldValue('SUCCESS') || 'Réputation mise à jour.';
+      const hookFn  = `repAddHook_${sanitizeIdentPart(npcId)}_${delta < 0 ? 'n' + Math.abs(delta) : delta}`;
+      registerHook(hookFn, [
+        `local player = dialogObject:getOwnName()`,
+        `_repAdd(player, ${luaStringLiteral(npcId)}, ${delta})`,
+        `return 0`,
+      ]);
+      const waitVn    = makeNode('Mise à jour réputation...');
+      const successVn = makeNode(success);
+      const waitNode  = getNode(waitVn);
+      waitNode.hook      = hookFn;
+      waitNode.reactions = [{ code: 0, target: successVn }];
+      return waitVn;
+    }
+    case 'npc_rep_set': {
+      const npcId   = block.getFieldValue('NPC_ID');
+      const value   = Number(block.getFieldValue('VALUE') || 0);
+      const success = block.getFieldValue('SUCCESS') || 'Réputation définie.';
+      const hookFn  = `repSetHook_${sanitizeIdentPart(npcId)}_${value}`;
+      registerHook(hookFn, [
+        `local player = dialogObject:getOwnName()`,
+        `_repSet(player, ${luaStringLiteral(npcId)}, ${value})`,
+        `return 0`,
+      ]);
+      const waitVn    = makeNode('Définition réputation...');
+      const successVn = makeNode(success);
+      const waitNode  = getNode(waitVn);
+      waitNode.hook      = hookFn;
+      waitNode.reactions = [{ code: 0, target: successVn }];
+      return waitVn;
+    }
+    case 'npc_cooldown_set': {
+      const actionId   = block.getFieldValue('ACTION_ID');
+      const durSec     = Number(block.getFieldValue('DURATION_SEC') || 86400);
+      const success    = block.getFieldValue('SUCCESS') || 'Cooldown démarré.';
+      const hookFn     = `cooldownSetHook_${sanitizeIdentPart(actionId)}`;
+      registerHook(hookFn, [
+        `local player = dialogObject:getOwnName()`,
+        `_cooldownSet(player, ${luaStringLiteral(actionId)}, ${durSec * 1000})`,
+        `return 0`,
+      ]);
+      const waitVn    = makeNode('Démarrage cooldown...');
+      const successVn = makeNode(success);
+      const waitNode  = getNode(waitVn);
+      waitNode.hook      = hookFn;
+      waitNode.reactions = [{ code: 0, target: successVn }];
+      return waitVn;
+    }
+    case 'npc_stock_init': {
+      const shopId   = block.getFieldValue('SHOP_ID');
+      const itemType = Number(block.getFieldValue('ITEM_TYPE') || 0);
+      const qty      = Number(block.getFieldValue('QTY') || 0);
+      const hookFn   = `stockInitHook_${sanitizeIdentPart(shopId)}_${itemType}`;
+      registerHook(hookFn, [
+        `_stockInit(${luaStringLiteral(shopId)}, ${itemType}, ${qty})`,
+        `return 0`,
+      ]);
+      const waitVn   = makeNode('Initialisation stock...');
+      const doneVn   = makeNode('Stock initialisé.');
+      const waitNode = getNode(waitVn);
+      waitNode.hook      = hookFn;
+      waitNode.reactions = [{ code: 0, target: doneVn }];
+      return waitVn;
+    }
+    case 'npc_stock_sell': {
+      const shopId   = block.getFieldValue('SHOP_ID');
+      const itemType = Number(block.getFieldValue('ITEM_TYPE') || 0);
+      const price    = Number(block.getFieldValue('PRICE') || 0);
+      const count    = Number(block.getFieldValue('COUNT') || 1);
+      const success  = block.getFieldValue('SUCCESS') || 'Voici votre article.';
+      const fail     = block.getFieldValue('FAIL')    || 'Désolé, rupture de stock.';
+      const hookFn   = `stockSellHook_${sanitizeIdentPart(shopId)}_${itemType}`;
+      registerHook(hookFn, [
+        `local player = dialogObject:getOwnName()`,
+        `if dialogObject:getEntity():getCredits() < ${price} then return 1 end`,
+        `if not _stockTake(${luaStringLiteral(shopId)}, ${itemType}, ${count}) then return 1 end`,
+        `dialogObject:getEntity():setCredits(dialogObject:getEntity():getCredits() - ${price})`,
+        `dialogObject:giveType(${itemType}, ${count})`,
+        `return 0`,
+      ]);
+      const waitVn    = makeNode('Traitement achat...');
+      const successVn = makeNode(success);
+      const failVn    = makeNode(fail);
+      const waitNode  = getNode(waitVn);
+      waitNode.hook      = hookFn;
+      waitNode.reactions = [{ code: 0, target: successVn }, { code: 1, target: failVn }];
+      return waitVn;
+    }
+    case 'npc_stock_add': {
+      const shopId   = block.getFieldValue('SHOP_ID');
+      const itemType = Number(block.getFieldValue('ITEM_TYPE') || 0);
+      const qty      = Number(block.getFieldValue('QTY') || 1);
+      const success  = block.getFieldValue('SUCCESS') || 'Stock rechargé.';
+      const hookFn   = `stockAddHook_${sanitizeIdentPart(shopId)}_${itemType}`;
+      registerHook(hookFn, [
+        `_stockAdd(${luaStringLiteral(shopId)}, ${itemType}, ${qty})`,
+        `return 0`,
+      ]);
+      const waitVn    = makeNode('Rechargement stock...');
+      const successVn = makeNode(success);
+      const waitNode  = getNode(waitVn);
+      waitNode.hook      = hookFn;
+      waitNode.reactions = [{ code: 0, target: successVn }];
+      return waitVn;
+    }
+    case 'npc_flag_set': {
+      const flagName = block.getFieldValue('FLAG_NAME');
+      const value    = block.getFieldValue('VALUE') === 'true';
+      const success  = block.getFieldValue('SUCCESS') || 'Flag mis à jour.';
+      const hookFn   = `flagSetHook_${sanitizeIdentPart(flagName)}_${value ? 't' : 'f'}`;
+      registerHook(hookFn, [
+        `local player = dialogObject:getOwnName()`,
+        `_flagSet(player, ${luaStringLiteral(flagName)}, ${value})`,
+        `return 0`,
+      ]);
+      const waitVn    = makeNode('Mise à jour flag...');
+      const successVn = makeNode(success);
+      const waitNode  = getNode(waitVn);
+      waitNode.hook      = hookFn;
+      waitNode.reactions = [{ code: 0, target: successVn }];
+      return waitVn;
+    }
+    case 'npc_world_set': {
+      const key     = block.getFieldValue('KEY');
+      const value   = block.getFieldValue('VALUE');
+      const success = block.getFieldValue('SUCCESS') || 'État mondial mis à jour.';
+      const hookFn  = `worldSetHook_${sanitizeIdentPart(key)}`;
+      registerHook(hookFn, [
+        `_worldSet(${luaStringLiteral(key)}, ${luaStringLiteral(value)})`,
+        `return 0`,
+      ]);
+      const waitVn    = makeNode('Mise à jour état mondial...');
+      const successVn = makeNode(success);
+      const waitNode  = getNode(waitVn);
+      waitNode.hook      = hookFn;
+      waitNode.reactions = [{ code: 0, target: successVn }];
+      return waitVn;
+    }
+    case 'npc_world_get': {
+      const key     = block.getFieldValue('KEY');
+      const defVal  = block.getFieldValue('DEFAULT') || '';
+      const success = (block.getFieldValue('SUCCESS') || 'Valeur: {world_val}').replace('{world_val}', `%s`);
+      const hookFn  = `worldGetHook_${sanitizeIdentPart(key)}`;
+      registerHook(hookFn, [
+        `local v = _worldGet(${luaStringLiteral(key)}, ${luaStringLiteral(defVal)})`,
+        `return 0`,
+      ]);
+      const waitVn    = makeNode('Lecture état mondial...');
+      const successVn = makeNode(success.replace('%s', `"+_worldGet(${JSON.stringify(key)},${JSON.stringify(defVal)})+"`));
+      const waitNode  = getNode(waitVn);
+      waitNode.hook      = hookFn;
+      waitNode.reactions = [{ code: 0, target: successVn }];
+      return waitVn;
+    }
     case 'npc_custom_hook': {
       const name    = block.getFieldValue('NAME');
       const body    = block.getFieldValue('BODY');
@@ -2659,6 +2852,10 @@ function generateLua(scriptName) {
     dbPath: null,
     usesHsqlMemory: false,
     usesQuestTable: false,
+    usesReputation: false,
+    usesCooldowns:  false,
+    usesShopStock:  false,
+    usesWorldState: false,
     luaVars: [],
   };
 
@@ -2703,10 +2900,21 @@ function generateLua(scriptName) {
     'npc_cond_quest_step',
   ].includes(b.type));
   if (usesMemory) {
-    // Table npc_quests dédiée (world-aware HSQLDB)
     _state.usesHsqlMemory = true;
     _state.usesQuestTable = true;
   }
+
+  // Détection des systèmes DB supplémentaires
+  if (allBlocks.some(b => ['npc_rep_add','npc_rep_set','npc_cond_rep'].includes(b.type)))
+    _state.usesReputation = true;
+  if (allBlocks.some(b => ['npc_cooldown_set','npc_cond_cooldown'].includes(b.type)))
+    _state.usesCooldowns = true;
+  if (allBlocks.some(b => ['npc_stock_init','npc_stock_sell','npc_stock_add','npc_cond_stock'].includes(b.type)))
+    _state.usesShopStock = true;
+  if (allBlocks.some(b => ['npc_world_set','npc_world_get','npc_cond_world'].includes(b.type)))
+    _state.usesWorldState = true;
+  if (allBlocks.some(b => ['npc_flag_set','npc_cond_flag_db'].includes(b.type)))
+    _state.usesHsqlMemory = true; // flags utilisent npc_memory
 
   // Find greeting blocks
   const greetings = allBlocks.filter(b => b.type === 'npc_greeting');
@@ -2731,7 +2939,7 @@ function generateLua(scriptName) {
   }
 
   // HSQLDB persistent state (world-aware, auto-create DB + tables)
-  const needsHsql = _state.usesHsqlMemory || (_state.usesQuestTable) || (_state.dbTables.size > 0);
+  const needsHsql = _state.usesHsqlMemory || _state.usesQuestTable || _state.usesReputation || _state.usesCooldowns || _state.usesShopStock || _state.usesWorldState || (_state.dbTables.size > 0);
   if (needsHsql) {
     lines.push(`-- HSQLDB persistent state (world-aware, auto-creates DB and tables)`);
     lines.push(`local _ServerConfig  = luajava.bindClass("org.schema.game.server.data.ServerConfig")`);
@@ -2861,6 +3069,115 @@ function generateLua(scriptName) {
       lines.push(`end`);
       lines.push(`local function _memIncrement(player, key, n)`);
       lines.push(`  n = n or 1; _memSet(player, key, _memGetNumber(player, key, 0) + n)`);
+      lines.push(`end`);
+      // Helpers flags DB (utilisent npc_memory)
+      lines.push(`local function _flagSet(player, flagName, value)`);
+      lines.push(`  _memSet(player, "flag:"..flagName, value and "1" or "0")`);
+      lines.push(`end`);
+      lines.push(`local function _flagGet(player, flagName)`);
+      lines.push(`  return _memGetText(player, "flag:"..flagName, "0") == "1"`);
+      lines.push(`end`);
+      lines.push(``);
+    }
+    // --- Table + helpers Réputation ---
+    if (_state.usesReputation) {
+      lines.push(`-- Table npc_reputation : réputation par joueur/faction`);
+      lines.push(`do`);
+      lines.push(`  local _s = _npcDb:createStatement()`);
+      lines.push(`  _s:execute("CREATE CACHED TABLE IF NOT EXISTS npc_reputation (player VARCHAR(255) NOT NULL, npc_id VARCHAR(255) NOT NULL, score INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (player, npc_id))")`);
+      lines.push(`  _s:close()`);
+      lines.push(`end`);
+      lines.push(`local function _repGet(player, npcId)`);
+      lines.push(`  local v = _dbGet("SELECT score FROM npc_reputation WHERE player=? AND npc_id=?", player, npcId)`);
+      lines.push(`  return v ~= nil and tonumber(v) or 0`);
+      lines.push(`end`);
+      lines.push(`local function _repAdd(player, npcId, delta)`);
+      lines.push(`  if _dbGet("SELECT 1 FROM npc_reputation WHERE player=? AND npc_id=?", player, npcId) == nil then`);
+      lines.push(`    _dbExec("INSERT INTO npc_reputation(player,npc_id,score) VALUES(?,?,?)", player, npcId, delta)`);
+      lines.push(`  else _dbExec("UPDATE npc_reputation SET score=score+? WHERE player=? AND npc_id=?", delta, player, npcId) end`);
+      lines.push(`end`);
+      lines.push(`local function _repSet(player, npcId, value)`);
+      lines.push(`  if _dbGet("SELECT 1 FROM npc_reputation WHERE player=? AND npc_id=?", player, npcId) == nil then`);
+      lines.push(`    _dbExec("INSERT INTO npc_reputation(player,npc_id,score) VALUES(?,?,?)", player, npcId, value)`);
+      lines.push(`  else _dbExec("UPDATE npc_reputation SET score=? WHERE player=? AND npc_id=?", value, player, npcId) end`);
+      lines.push(`end`);
+      lines.push(``);
+    }
+    // --- Table + helpers Cooldowns ---
+    if (_state.usesCooldowns) {
+      lines.push(`-- Table npc_cooldowns : cooldowns par joueur`);
+      lines.push(`do`);
+      lines.push(`  local _s = _npcDb:createStatement()`);
+      lines.push(`  _s:execute("CREATE CACHED TABLE IF NOT EXISTS npc_cooldowns (player VARCHAR(255) NOT NULL, action_id VARCHAR(255) NOT NULL, expires_at BIGINT NOT NULL DEFAULT 0, PRIMARY KEY (player, action_id))")`);
+      lines.push(`  _s:close()`);
+      lines.push(`end`);
+      lines.push(`local function _cooldownSet(player, actionId, durationMs)`);
+      lines.push(`  local now = luajava.bindClass("java.lang.System").currentTimeMillis()`);
+      lines.push(`  local exp = now + durationMs`);
+      lines.push(`  if _dbGet("SELECT 1 FROM npc_cooldowns WHERE player=? AND action_id=?", player, actionId) == nil then`);
+      lines.push(`    _dbExec("INSERT INTO npc_cooldowns(player,action_id,expires_at) VALUES(?,?,?)", player, actionId, exp)`);
+      lines.push(`  else _dbExec("UPDATE npc_cooldowns SET expires_at=? WHERE player=? AND action_id=?", exp, player, actionId) end`);
+      lines.push(`end`);
+      lines.push(`local function _cooldownActive(player, actionId)`);
+      lines.push(`  local now = luajava.bindClass("java.lang.System").currentTimeMillis()`);
+      lines.push(`  local exp = _dbGet("SELECT expires_at FROM npc_cooldowns WHERE player=? AND action_id=?", player, actionId)`);
+      lines.push(`  return exp ~= nil and tonumber(exp) > now`);
+      lines.push(`end`);
+      lines.push(`local function _cooldownRemaining(player, actionId)`);
+      lines.push(`  local now = luajava.bindClass("java.lang.System").currentTimeMillis()`);
+      lines.push(`  local exp = _dbGet("SELECT expires_at FROM npc_cooldowns WHERE player=? AND action_id=?", player, actionId)`);
+      lines.push(`  if exp == nil then return 0 end`);
+      lines.push(`  local r = tonumber(exp) - now; return r > 0 and r or 0`);
+      lines.push(`end`);
+      lines.push(``);
+    }
+    // --- Table + helpers Stock boutique ---
+    if (_state.usesShopStock) {
+      lines.push(`-- Table npc_shop_stock : stock boutique par item`);
+      lines.push(`do`);
+      lines.push(`  local _s = _npcDb:createStatement()`);
+      lines.push(`  _s:execute("CREATE CACHED TABLE IF NOT EXISTS npc_shop_stock (shop_id VARCHAR(255) NOT NULL, item_type INTEGER NOT NULL, quantity INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (shop_id, item_type))")`);
+      lines.push(`  _s:close()`);
+      lines.push(`end`);
+      lines.push(`local function _stockGet(shopId, itemType)`);
+      lines.push(`  local v = _dbGet("SELECT quantity FROM npc_shop_stock WHERE shop_id=? AND item_type=?", shopId, itemType)`);
+      lines.push(`  return v ~= nil and tonumber(v) or 0`);
+      lines.push(`end`);
+      lines.push(`local function _stockInit(shopId, itemType, qty)`);
+      lines.push(`  if _dbGet("SELECT 1 FROM npc_shop_stock WHERE shop_id=? AND item_type=?", shopId, itemType) == nil then`);
+      lines.push(`    _dbExec("INSERT INTO npc_shop_stock(shop_id,item_type,quantity) VALUES(?,?,?)", shopId, itemType, qty)`);
+      lines.push(`  end`);
+      lines.push(`end`);
+      lines.push(`local function _stockTake(shopId, itemType, qty)`);
+      lines.push(`  if _stockGet(shopId, itemType) < qty then return false end`);
+      lines.push(`  _dbExec("UPDATE npc_shop_stock SET quantity=quantity-? WHERE shop_id=? AND item_type=?", qty, shopId, itemType)`);
+      lines.push(`  return true`);
+      lines.push(`end`);
+      lines.push(`local function _stockAdd(shopId, itemType, qty)`);
+      lines.push(`  if _dbGet("SELECT 1 FROM npc_shop_stock WHERE shop_id=? AND item_type=?", shopId, itemType) == nil then`);
+      lines.push(`    _dbExec("INSERT INTO npc_shop_stock(shop_id,item_type,quantity) VALUES(?,?,?)", shopId, itemType, qty)`);
+      lines.push(`  else _dbExec("UPDATE npc_shop_stock SET quantity=quantity+? WHERE shop_id=? AND item_type=?", qty, shopId, itemType) end`);
+      lines.push(`end`);
+      lines.push(``);
+    }
+    // --- Table + helpers World state ---
+    if (_state.usesWorldState) {
+      lines.push(`-- Table npc_world_state : état global partagé`);
+      lines.push(`do`);
+      lines.push(`  local _s = _npcDb:createStatement()`);
+      lines.push(`  _s:execute("CREATE CACHED TABLE IF NOT EXISTS npc_world_state (key VARCHAR(255) PRIMARY KEY, value LONGVARCHAR)")`);
+      lines.push(`  _s:close()`);
+      lines.push(`end`);
+      lines.push(`local function _worldGet(key, def)`);
+      lines.push(`  local v = _dbGet("SELECT value FROM npc_world_state WHERE key=?", key)`);
+      lines.push(`  return v ~= nil and tostring(v) or tostring(def or "")`);
+      lines.push(`end`);
+      lines.push(`local function _worldGetNumber(key, def)`);
+      lines.push(`  local n = tonumber(_worldGet(key, tostring(def)))`);
+      lines.push(`  return n ~= nil and n or (tonumber(def) or 0)`);
+      lines.push(`end`);
+      lines.push(`local function _worldSet(key, value)`);
+      lines.push(`  _dbExec("MERGE INTO npc_world_state AS w USING (VALUES(CAST(? AS VARCHAR(255)),CAST(? AS LONGVARCHAR))) AS v(k,vv) ON w.key=v.k WHEN MATCHED THEN UPDATE SET value=v.vv WHEN NOT MATCHED THEN INSERT(key,value) VALUES(v.k,v.vv)", key, tostring(value))`);
       lines.push(`end`);
       lines.push(``);
     }
