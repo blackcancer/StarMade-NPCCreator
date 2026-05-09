@@ -930,10 +930,10 @@ Blockly.Blocks['npc_quest_offer'] = {
     this.setNextStatement(true, null);
     this.setColour('#d35400');
     this.setTooltip(
-      'QUEST OFFER\nPropose une quête au joueur avec boutons Accepter/Refuser.\n' +
-      'Si acceptée : insère une ligne dans npc_quests (status=active, step=N).\n' +
-      'Si refusée : aucun changement en DB.\n' +
-      'Si déjà acceptée : affiche le texte de suivi à la place.'
+      'QUEST OFFER\nOffers a quest to the player with Accept/Refuse buttons.\n' +
+      'If accepted: inserts a row into npc_quests (status=active, step=N).\n' +
+      'If refused: no DB change.\n' +
+      'If already accepted: shows the follow-up text instead.'
     );
   }
 };
@@ -952,7 +952,7 @@ Blockly.Blocks['npc_quest_start'] = {
     this.setPreviousStatement(true, null);
     this.setNextStatement(true, null);
     this.setColour('#d35400');
-    this.setTooltip('QUEST START\nDémarre une quête : insère/met à jour npc_quests avec status=active.');
+    this.setTooltip('QUEST START\nStarts a quest: inserts/updates npc_quests with status=active.');
   }
 };
 
@@ -970,7 +970,7 @@ Blockly.Blocks['npc_quest_set_step'] = {
     this.setPreviousStatement(true, null);
     this.setNextStatement(true, null);
     this.setColour('#d35400');
-    this.setTooltip('QUEST SET STEP\nMet à jour le step dans npc_quests (status reste active).');
+    this.setTooltip('QUEST SET STEP\nUpdates the step in npc_quests (status stays active).');
   }
 };
 
@@ -981,12 +981,12 @@ Blockly.Blocks['npc_quest_complete'] = {
       .appendField('📜 Quest COMPLETE id')
       .appendField(new Blockly.FieldTextInput('intro_delivery'), 'QUEST_ID');
     this.appendDummyInput()
-      .appendField('Récompense crédits')
+      .appendField('Reward credits')
       .appendField(new Blockly.FieldNumber(0, 0), 'REWARD_CREDITS');
     this.appendDummyInput()
-      .appendField('Récompense item type')
+      .appendField('Reward item type')
       .appendField(new Blockly.FieldNumber(0, 0), 'REWARD_ITEM')
-      .appendField('quantité')
+      .appendField('count')
       .appendField(new Blockly.FieldNumber(0, 0), 'REWARD_COUNT');
     this.appendDummyInput()
       .appendField('Success text')
@@ -994,7 +994,7 @@ Blockly.Blocks['npc_quest_complete'] = {
     this.setPreviousStatement(true, null);
     this.setNextStatement(true, null);
     this.setColour('#d35400');
-    this.setTooltip('QUEST COMPLETE\nMarque la quête comme terminée dans npc_quests + verse récompenses crédits/item.');
+    this.setTooltip('QUEST COMPLETE\nMarks the quest as complete in npc_quests and grants credit/item rewards.');
   }
 };
 
@@ -1059,22 +1059,22 @@ Blockly.Blocks['npc_cond_quest_step'] = {
 Blockly.Blocks['npc_check_rep'] = {
   init() {
     this.appendDummyInput()
-      .appendField('⭐ Check réputation envers')
+      .appendField('⭐ Check reputation vs')
       .appendField(new Blockly.FieldTextInput('trading_guild'), 'NPC_ID')
       .appendField(new Blockly.FieldDropdown([
         ['≥','>='], ['>','>'], ['=','=='], ['≠','~='], ['≤','<='], ['<','<']
       ]), 'OP')
       .appendField(new Blockly.FieldNumber(0, -9999, 9999), 'VALUE');
     this.appendDummyInput()
-      .appendField('Si vrai →')
+      .appendField('If true →')
       .appendField(new Blockly.FieldTextInput('Accès accordé.'), 'SUCCESS');
     this.appendDummyInput()
-      .appendField('Si faux →')
-      .appendField(new Blockly.FieldTextInput('Réputation insuffisante.'), 'FAIL');
+      .appendField('If false →')
+      .appendField(new Blockly.FieldTextInput('Reputation too low.'), 'FAIL');
     this.setPreviousStatement(true, null);
     this.setNextStatement(true, null);
     this.setColour('#c0392b');
-    this.setTooltip('CHECK RÉPUTATION\nVérifie la réputation du joueur envers un NPC/faction et branche sur success ou fail.');
+    this.setTooltip('CHECK REPUTATION\nChecks the player reputation toward a NPC/faction and branches to success or fail.');
   }
 };
 
@@ -1086,19 +1086,19 @@ Blockly.Blocks['npc_check_cooldown'] = {
       .appendField(new Blockly.FieldTextInput('daily_delivery'), 'ACTION_ID')
       .appendField('est')
       .appendField(new Blockly.FieldDropdown([
-        ['expiré (joueur peut agir)', 'expired'],
-        ['actif (joueur doit attendre)', 'active'],
+        ['expired (player can act)', 'expired'],
+        ['active (player must wait)', 'active'],
       ]), 'STATE');
     this.appendDummyInput()
-      .appendField('Si vrai →')
+      .appendField('If true →')
       .appendField(new Blockly.FieldTextInput('Vous pouvez continuer.'), 'SUCCESS');
     this.appendDummyInput()
-      .appendField('Si faux →')
+      .appendField('If false →')
       .appendField(new Blockly.FieldTextInput('Vous devez encore attendre.'), 'FAIL');
     this.setPreviousStatement(true, null);
     this.setNextStatement(true, null);
     this.setColour('#1abc9c');
-    this.setTooltip('CHECK COOLDOWN\nVérifie si un cooldown est expiré (joueur disponible) ou encore actif.');
+    this.setTooltip('CHECK COOLDOWN\nChecks whether a cooldown is expired (player available) or still active.');
   }
 };
 
@@ -1115,15 +1115,15 @@ Blockly.Blocks['npc_check_stock'] = {
       ]), 'OP')
       .appendField(new Blockly.FieldNumber(1, 0), 'VALUE');
     this.appendDummyInput()
-      .appendField('Si vrai →')
+      .appendField('If true →')
       .appendField(new Blockly.FieldTextInput('En stock.'), 'SUCCESS');
     this.appendDummyInput()
-      .appendField('Si faux →')
+      .appendField('If false →')
       .appendField(new Blockly.FieldTextInput('Rupture de stock.'), 'FAIL');
     this.setPreviousStatement(true, null);
     this.setNextStatement(true, null);
     this.setColour('#2980b9');
-    this.setTooltip('CHECK STOCK\nVérifie la quantité disponible d\'un item dans une boutique et branche sur success ou fail.');
+    this.setTooltip('CHECK STOCK\nChecks the available quantity of a shop item and branches to success or fail.');
   }
 };
 
@@ -1135,19 +1135,19 @@ Blockly.Blocks['npc_check_flag_db'] = {
       .appendField(new Blockly.FieldTextInput('first_visit'), 'FLAG_NAME')
       .appendField('est')
       .appendField(new Blockly.FieldDropdown([
-        ['true (activé)', 'true'],
-        ['false (désactivé)', 'false'],
+        ['true (on)', 'true'],
+        ['false (off)', 'false'],
       ]), 'VALUE');
     this.appendDummyInput()
-      .appendField('Si vrai →')
-      .appendField(new Blockly.FieldTextInput('Condition remplie.'), 'SUCCESS');
+      .appendField('If true →')
+      .appendField(new Blockly.FieldTextInput('Condition met.'), 'SUCCESS');
     this.appendDummyInput()
-      .appendField('Si faux →')
-      .appendField(new Blockly.FieldTextInput('Condition non remplie.'), 'FAIL');
+      .appendField('If false →')
+      .appendField(new Blockly.FieldTextInput('Condition not met.'), 'FAIL');
     this.setPreviousStatement(true, null);
     this.setNextStatement(true, null);
     this.setColour('#8e44ad');
-    this.setTooltip('CHECK FLAG DB\nVérifie la valeur d\'un flag persistant par joueur et branche sur success ou fail.');
+    this.setTooltip('CHECK FLAG DB\nChecks the value of a persistent per-player flag and branches to success or fail.');
   }
 };
 
@@ -1155,7 +1155,7 @@ Blockly.Blocks['npc_check_flag_db'] = {
 Blockly.Blocks['npc_check_world'] = {
   init() {
     this.appendDummyInput()
-      .appendField('🌍 Check état mondial')
+      .appendField('🌍 Check world state')
       .appendField(new Blockly.FieldTextInput('guild_event_active'), 'KEY')
       .appendField(new Blockly.FieldDropdown([
         ['= texte','==text'], ['≠ texte','~=text'],
@@ -1164,15 +1164,15 @@ Blockly.Blocks['npc_check_world'] = {
       ]), 'OP')
       .appendField(new Blockly.FieldTextInput('true'), 'VALUE');
     this.appendDummyInput()
-      .appendField('Si vrai →')
-      .appendField(new Blockly.FieldTextInput('Événement actif.'), 'SUCCESS');
+      .appendField('If true →')
+      .appendField(new Blockly.FieldTextInput('Event is active.'), 'SUCCESS');
     this.appendDummyInput()
-      .appendField('Si faux →')
+      .appendField('If false →')
       .appendField(new Blockly.FieldTextInput('Pas d\'événement en cours.'), 'FAIL');
     this.setPreviousStatement(true, null);
     this.setNextStatement(true, null);
     this.setColour('#7f8c8d');
-    this.setTooltip('CHECK WORLD STATE\nVérifie la valeur d\'un état global et branche sur success ou fail.');
+    this.setTooltip('CHECK WORLD STATE\nChecks a global world state value and branches to success or fail.');
   }
 };
 
@@ -1180,15 +1180,15 @@ Blockly.Blocks['npc_check_world'] = {
 Blockly.Blocks['npc_get_rep'] = {
   init() {
     this.appendDummyInput()
-      .appendField('⭐ Afficher réputation envers')
+      .appendField('⭐ Show reputation vs')
       .appendField(new Blockly.FieldTextInput('trading_guild'), 'NPC_ID');
     this.appendDummyInput()
       .appendField('Texte (%s = valeur)')
-      .appendField(new Blockly.FieldTextInput('Votre réputation : %s'), 'TEXT');
+      .appendField(new Blockly.FieldTextInput('Your reputation: %s'), 'TEXT');
     this.setPreviousStatement(true, null);
     this.setNextStatement(true, null);
     this.setColour('#c0392b');
-    this.setTooltip('GET RÉPUTATION\nAffiche la réputation du joueur envers un NPC dans le dialog.\nUtilisez %s dans le texte pour la valeur.');
+    this.setTooltip('GET REPUTATION\nShows the player reputation toward a NPC in the dialog.\nUse %s in the text as a value placeholder.');
   }
 };
 
@@ -1196,11 +1196,11 @@ Blockly.Blocks['npc_get_rep'] = {
 Blockly.Blocks['npc_get_cooldown_remaining'] = {
   init() {
     this.appendDummyInput()
-      .appendField('⏱️ Afficher temps restant cooldown')
+      .appendField('⏱️ Show cooldown remaining')
       .appendField(new Blockly.FieldTextInput('daily_delivery'), 'ACTION_ID');
     this.appendDummyInput()
       .appendField('Texte (%s = secondes restantes)')
-      .appendField(new Blockly.FieldTextInput('Revenir dans %s secondes.'), 'TEXT');
+      .appendField(new Blockly.FieldTextInput('Come back in %s seconds.'), 'TEXT');
     this.setPreviousStatement(true, null);
     this.setNextStatement(true, null);
     this.setColour('#1abc9c');
@@ -1212,17 +1212,17 @@ Blockly.Blocks['npc_get_cooldown_remaining'] = {
 Blockly.Blocks['npc_get_stock'] = {
   init() {
     this.appendDummyInput()
-      .appendField('📦 Afficher stock shop')
+      .appendField('📦 Show stock')
       .appendField(new Blockly.FieldTextInput('guild_shop'), 'SHOP_ID')
       .appendField('item')
       .appendField(new Blockly.FieldNumber(424, 0), 'ITEM_TYPE');
     this.appendDummyInput()
-      .appendField('Texte (%s = quantité)')
-      .appendField(new Blockly.FieldTextInput('Stock disponible : %s'), 'TEXT');
+      .appendField('Text (%s = quantity)')
+      .appendField(new Blockly.FieldTextInput('Available stock: %s'), 'TEXT';
     this.setPreviousStatement(true, null);
     this.setNextStatement(true, null);
     this.setColour('#2980b9');
-    this.setTooltip('GET STOCK\nAffiche la quantité disponible d\'un item dans la boutique dans le dialog.');
+    this.setTooltip('GET STOCK\nShows the available quantity of a shop item in the dialog.');
   }
 };
 
@@ -1230,13 +1230,13 @@ Blockly.Blocks['npc_get_stock'] = {
 Blockly.Blocks['npc_get_world'] = {
   init() {
     this.appendDummyInput()
-      .appendField('🌍 Afficher état mondial clé')
+      .appendField('🌍 Show world state key')
       .appendField(new Blockly.FieldTextInput('guild_event_name'), 'KEY')
-      .appendField('défaut')
-      .appendField(new Blockly.FieldTextInput('aucun'), 'DEFAULT');
+      .appendField('default')
+      .appendField(new Blockly.FieldTextInput('none'), 'DEFAULT';
     this.appendDummyInput()
       .appendField('Texte (%s = valeur)')
-      .appendField(new Blockly.FieldTextInput('Événement actuel : %s'), 'TEXT');
+      .appendField(new Blockly.FieldTextInput('Current event: %s'), 'TEXT');
     this.setPreviousStatement(true, null);
     this.setNextStatement(true, null);
     this.setColour('#7f8c8d');
@@ -1252,11 +1252,11 @@ Blockly.Blocks['npc_cooldown_clear'] = {
       .appendField(new Blockly.FieldTextInput('daily_delivery'), 'ACTION_ID');
     this.appendDummyInput()
       .appendField('Success text')
-      .appendField(new Blockly.FieldTextInput('Cooldown réinitialisé.'), 'SUCCESS');
+      .appendField(new Blockly.FieldTextInput('Cooldown cleared.'), 'SUCCESS');
     this.setPreviousStatement(true, null);
     this.setNextStatement(true, null);
     this.setColour('#1abc9c');
-    this.setTooltip('COOLDOWN CLEAR\nSupprime un cooldown (le joueur peut de nouveau effectuer l\'action).');
+    this.setTooltip('COOLDOWN CLEAR\nRemoves a cooldown so the player can perform the action again.');
   }
 };
 
@@ -1264,15 +1264,15 @@ Blockly.Blocks['npc_cooldown_clear'] = {
 Blockly.Blocks['npc_rep_reset'] = {
   init() {
     this.appendDummyInput()
-      .appendField('⭐ Réputation RESET npc')
+      .appendField('⭐ Reputation RESET npc')
       .appendField(new Blockly.FieldTextInput('trading_guild'), 'NPC_ID');
     this.appendDummyInput()
       .appendField('Success text')
-      .appendField(new Blockly.FieldTextInput('Réputation réinitialisée.'), 'SUCCESS');
+      .appendField(new Blockly.FieldTextInput('Reputation reset.'), 'SUCCESS');
     this.setPreviousStatement(true, null);
     this.setNextStatement(true, null);
     this.setColour('#c0392b');
-    this.setTooltip('RÉPUTATION RESET\nRemet la réputation du joueur à 0 envers un NPC/faction.');
+    this.setTooltip('REPUTATION RESET\nResets the player reputation to 0 toward a NPC/faction.');
   }
 };
 
@@ -1284,15 +1284,15 @@ Blockly.Blocks['npc_stock_reset'] = {
       .appendField(new Blockly.FieldTextInput('guild_shop'), 'SHOP_ID')
       .appendField('item')
       .appendField(new Blockly.FieldNumber(424, 0), 'ITEM_TYPE')
-      .appendField('qté')
-      .appendField(new Blockly.FieldNumber(5, 0), 'QTY');
+      .appendField('qty')
+      .appendField(new Blockly.FieldNumber(5, 0), 'QTY';
     this.appendDummyInput()
       .appendField('Success text')
-      .appendField(new Blockly.FieldTextInput('Stock réinitialisé.'), 'SUCCESS');
+      .appendField(new Blockly.FieldTextInput('Stock reset.'), 'SUCCESS');
     this.setPreviousStatement(true, null);
     this.setNextStatement(true, null);
     this.setColour('#2980b9');
-    this.setTooltip('STOCK RESET\nForce la quantité d\'un item en stock (recharge complète ou correction).');
+    this.setTooltip('STOCK RESET\nForces the quantity of a shop item (full restock or manual correction).');
   }
 };
 
@@ -2895,14 +2895,14 @@ function processActionBlock(block, parentVarName) {
     case 'npc_rep_add': {
       const npcId  = block.getFieldValue('NPC_ID');
       const delta  = Number(block.getFieldValue('DELTA') || 10);
-      const success = block.getFieldValue('SUCCESS') || 'Réputation mise à jour.';
+      const success = block.getFieldValue('SUCCESS') || 'Reputation updated.';
       const hookFn  = `repAddHook_${sanitizeIdentPart(npcId)}_${delta < 0 ? 'n' + Math.abs(delta) : delta}`;
       registerHook(hookFn, [
         `local player = dialogObject:getOwnName()`,
         `_repAdd(player, ${luaStringLiteral(npcId)}, ${delta})`,
         `return 0`,
       ]);
-      const waitVn    = makeNode('Mise à jour réputation...');
+      const waitVn    = makeNode('Updating reputation...');
       const successVn = makeNode(success);
       const waitNode  = getNode(waitVn);
       waitNode.hook      = hookFn;
@@ -2912,14 +2912,14 @@ function processActionBlock(block, parentVarName) {
     case 'npc_rep_set': {
       const npcId   = block.getFieldValue('NPC_ID');
       const value   = Number(block.getFieldValue('VALUE') || 0);
-      const success = block.getFieldValue('SUCCESS') || 'Réputation définie.';
+      const success = block.getFieldValue('SUCCESS') || 'Reputation set.';
       const hookFn  = `repSetHook_${sanitizeIdentPart(npcId)}_${value}`;
       registerHook(hookFn, [
         `local player = dialogObject:getOwnName()`,
         `_repSet(player, ${luaStringLiteral(npcId)}, ${value})`,
         `return 0`,
       ]);
-      const waitVn    = makeNode('Définition réputation...');
+      const waitVn    = makeNode('Setting reputation...');
       const successVn = makeNode(success);
       const waitNode  = getNode(waitVn);
       waitNode.hook      = hookFn;
@@ -2929,14 +2929,14 @@ function processActionBlock(block, parentVarName) {
     case 'npc_cooldown_set': {
       const actionId   = block.getFieldValue('ACTION_ID');
       const durSec     = Number(block.getFieldValue('DURATION_SEC') || 86400);
-      const success    = block.getFieldValue('SUCCESS') || 'Cooldown démarré.';
+      const success    = block.getFieldValue('SUCCESS') || 'Cooldown started.';
       const hookFn     = `cooldownSetHook_${sanitizeIdentPart(actionId)}`;
       registerHook(hookFn, [
         `local player = dialogObject:getOwnName()`,
         `_cooldownSet(player, ${luaStringLiteral(actionId)}, ${durSec * 1000})`,
         `return 0`,
       ]);
-      const waitVn    = makeNode('Démarrage cooldown...');
+      const waitVn    = makeNode('Starting cooldown...');
       const successVn = makeNode(success);
       const waitNode  = getNode(waitVn);
       waitNode.hook      = hookFn;
@@ -2952,8 +2952,8 @@ function processActionBlock(block, parentVarName) {
         `_stockInit(${luaStringLiteral(shopId)}, ${itemType}, ${qty})`,
         `return 0`,
       ]);
-      const waitVn   = makeNode('Initialisation stock...');
-      const doneVn   = makeNode('Stock initialisé.');
+      const waitVn   = makeNode('Initializing stock...');
+      const doneVn   = makeNode('Stock initialized.');
       const waitNode = getNode(waitVn);
       waitNode.hook      = hookFn;
       waitNode.reactions = [{ code: 0, target: doneVn }];
@@ -2964,8 +2964,8 @@ function processActionBlock(block, parentVarName) {
       const itemType = Number(block.getFieldValue('ITEM_TYPE') || 0);
       const price    = Number(block.getFieldValue('PRICE') || 0);
       const count    = Number(block.getFieldValue('COUNT') || 1);
-      const success  = block.getFieldValue('SUCCESS') || 'Voici votre article.';
-      const fail     = block.getFieldValue('FAIL')    || 'Désolé, rupture de stock.';
+      const success  = block.getFieldValue('SUCCESS') || 'Here is your item.';
+      const fail     = block.getFieldValue('FAIL')    || 'Sorry, out of stock.';
       const hookFn   = `stockSellHook_${sanitizeIdentPart(shopId)}_${itemType}`;
       registerHook(hookFn, [
         `local player = dialogObject:getOwnName()`,
@@ -2987,13 +2987,13 @@ function processActionBlock(block, parentVarName) {
       const shopId   = block.getFieldValue('SHOP_ID');
       const itemType = Number(block.getFieldValue('ITEM_TYPE') || 0);
       const qty      = Number(block.getFieldValue('QTY') || 1);
-      const success  = block.getFieldValue('SUCCESS') || 'Stock rechargé.';
+      const success  = block.getFieldValue('SUCCESS') || 'Stock restocked.';
       const hookFn   = `stockAddHook_${sanitizeIdentPart(shopId)}_${itemType}`;
       registerHook(hookFn, [
         `_stockAdd(${luaStringLiteral(shopId)}, ${itemType}, ${qty})`,
         `return 0`,
       ]);
-      const waitVn    = makeNode('Rechargement stock...');
+      const waitVn    = makeNode('Restocking...');
       const successVn = makeNode(success);
       const waitNode  = getNode(waitVn);
       waitNode.hook      = hookFn;
@@ -3003,14 +3003,14 @@ function processActionBlock(block, parentVarName) {
     case 'npc_flag_set': {
       const flagName = block.getFieldValue('FLAG_NAME');
       const value    = block.getFieldValue('VALUE') === 'true';
-      const success  = block.getFieldValue('SUCCESS') || 'Flag mis à jour.';
+      const success  = block.getFieldValue('SUCCESS') || 'Flag updated.';
       const hookFn   = `flagSetHook_${sanitizeIdentPart(flagName)}_${value ? 't' : 'f'}`;
       registerHook(hookFn, [
         `local player = dialogObject:getOwnName()`,
         `_flagSet(player, ${luaStringLiteral(flagName)}, ${value})`,
         `return 0`,
       ]);
-      const waitVn    = makeNode('Mise à jour flag...');
+      const waitVn    = makeNode('Updating flag...');
       const successVn = makeNode(success);
       const waitNode  = getNode(waitVn);
       waitNode.hook      = hookFn;
@@ -3020,13 +3020,13 @@ function processActionBlock(block, parentVarName) {
     case 'npc_world_set': {
       const key     = block.getFieldValue('KEY');
       const value   = block.getFieldValue('VALUE');
-      const success = block.getFieldValue('SUCCESS') || 'État mondial mis à jour.';
+      const success = block.getFieldValue('SUCCESS') || 'World state updated.';
       const hookFn  = `worldSetHook_${sanitizeIdentPart(key)}`;
       registerHook(hookFn, [
         `_worldSet(${luaStringLiteral(key)}, ${luaStringLiteral(value)})`,
         `return 0`,
       ]);
-      const waitVn    = makeNode('Mise à jour état mondial...');
+      const waitVn    = makeNode('Updating world state...');
       const successVn = makeNode(success);
       const waitNode  = getNode(waitVn);
       waitNode.hook      = hookFn;
@@ -3042,7 +3042,7 @@ function processActionBlock(block, parentVarName) {
         `local v = _worldGet(${luaStringLiteral(key)}, ${luaStringLiteral(defVal)})`,
         `return 0`,
       ]);
-      const waitVn    = makeNode('Lecture état mondial...');
+      const waitVn    = makeNode('Reading world state...');
       const successVn = makeNode(success.replace('%s', `"+_worldGet(${JSON.stringify(key)},${JSON.stringify(defVal)})+"`));
       const waitNode  = getNode(waitVn);
       waitNode.hook      = hookFn;
@@ -3053,20 +3053,20 @@ function processActionBlock(block, parentVarName) {
       const npcId   = block.getFieldValue('NPC_ID');
       const op      = block.getFieldValue('OP') || '>=';
       const value   = Number(block.getFieldValue('VALUE') || 0);
-      const success = block.getFieldValue('SUCCESS') || 'Accès accordé.';
-      const fail    = block.getFieldValue('FAIL')    || 'Réputation insuffisante.';
+      const success = block.getFieldValue('SUCCESS') || 'Access granted.';
+      const fail    = block.getFieldValue('FAIL')    || 'Reputation too low.';
       const hookFn  = `checkRepHook_${sanitizeIdentPart(npcId)}_${String(op).replace(/\W/g,'_')}_${value}`;
       return makeBinaryConditionAction(hookFn, [
         `local player = dialogObject:getOwnName()`,
         `if _repGet(player, ${luaStringLiteral(npcId)}) ${op} ${value} then return 0 end`,
         `return -1`,
-      ], 'Vérification réputation...', success, fail);
+      ], 'Checking reputation...', success, fail);
     }
     case 'npc_check_cooldown': {
       const actionId = block.getFieldValue('ACTION_ID');
       const state    = block.getFieldValue('STATE') || 'expired';
-      const success  = block.getFieldValue('SUCCESS') || 'Vous pouvez continuer.';
-      const fail     = block.getFieldValue('FAIL')    || 'Vous devez encore attendre.';
+      const success  = block.getFieldValue('SUCCESS') || 'You may proceed.';
+      const fail     = block.getFieldValue('FAIL')    || 'You must wait longer.';
       const hookFn   = `checkCooldownHook_${sanitizeIdentPart(actionId)}_${state}`;
       const cond     = state === 'expired'
         ? `not _cooldownActive(player, ${luaStringLiteral(actionId)})`
@@ -3075,39 +3075,39 @@ function processActionBlock(block, parentVarName) {
         `local player = dialogObject:getOwnName()`,
         `if ${cond} then return 0 end`,
         `return -1`,
-      ], 'Vérification cooldown...', success, fail);
+      ], 'Checking cooldown...', success, fail);
     }
     case 'npc_check_stock': {
       const shopId   = block.getFieldValue('SHOP_ID');
       const itemType = Number(block.getFieldValue('ITEM_TYPE') || 0);
       const op       = block.getFieldValue('OP') || '>=';
       const value    = Number(block.getFieldValue('VALUE') || 1);
-      const success  = block.getFieldValue('SUCCESS') || 'En stock.';
-      const fail     = block.getFieldValue('FAIL')    || 'Rupture de stock.';
+      const success  = block.getFieldValue('SUCCESS') || 'In stock.';
+      const fail     = block.getFieldValue('FAIL')    || 'Out of stock.';
       const hookFn   = `checkStockHook_${sanitizeIdentPart(shopId)}_${itemType}`;
       return makeBinaryConditionAction(hookFn, [
         `if _stockGet(${luaStringLiteral(shopId)}, ${itemType}) ${op} ${value} then return 0 end`,
         `return -1`,
-      ], 'Vérification stock...', success, fail);
+      ], 'Checking stock...', success, fail);
     }
     case 'npc_check_flag_db': {
       const flagName = block.getFieldValue('FLAG_NAME');
       const value    = block.getFieldValue('VALUE') || 'true';
-      const success  = block.getFieldValue('SUCCESS') || 'Condition remplie.';
-      const fail     = block.getFieldValue('FAIL')    || 'Condition non remplie.';
+      const success  = block.getFieldValue('SUCCESS') || 'Condition met.';
+      const fail     = block.getFieldValue('FAIL')    || 'Condition not met.';
       const hookFn   = `checkFlagDbHook_${sanitizeIdentPart(flagName)}_${value}`;
       return makeBinaryConditionAction(hookFn, [
         `local player = dialogObject:getOwnName()`,
         `if _flagGet(player, ${luaStringLiteral(flagName)}) == ${value} then return 0 end`,
         `return -1`,
-      ], 'Vérification flag...', success, fail);
+      ], 'Checking flag...', success, fail);
     }
     case 'npc_check_world': {
       const key   = block.getFieldValue('KEY');
       const op    = block.getFieldValue('OP') || '==text';
       const value = block.getFieldValue('VALUE') || 'true';
-      const success = block.getFieldValue('SUCCESS') || 'Événement actif.';
-      const fail    = block.getFieldValue('FAIL')    || "Pas d'événement en cours.";
+      const success = block.getFieldValue('SUCCESS') || 'Event is active.';
+      const fail    = block.getFieldValue('FAIL')    || 'No event in progress.';
       const hookFn  = `checkWorldHook_${sanitizeIdentPart(key)}`;
       let condLine;
       if (op.endsWith('text')) {
@@ -3120,11 +3120,11 @@ function processActionBlock(block, parentVarName) {
       return makeBinaryConditionAction(hookFn, [
         condLine,
         `return -1`,
-      ], 'Vérification état mondial...', success, fail);
+      ], 'Checking world state...', success, fail);
     }
     case 'npc_get_rep': {
       const npcId  = block.getFieldValue('NPC_ID');
-      const text   = block.getFieldValue('TEXT') || 'Votre réputation : %s';
+      const text   = block.getFieldValue('TEXT') || 'Your reputation: %s';
       const hookFn = `getRepHook_${sanitizeIdentPart(npcId)}`;
       registerHook(hookFn, [
         `local player = dialogObject:getOwnName()`,
@@ -3138,7 +3138,7 @@ function processActionBlock(block, parentVarName) {
     }
     case 'npc_get_cooldown_remaining': {
       const actionId = block.getFieldValue('ACTION_ID');
-      const text     = block.getFieldValue('TEXT') || 'Revenir dans %s secondes.';
+      const text     = block.getFieldValue('TEXT') || 'Come back in %s seconds.';
       const hookFn   = `getCooldownHook_${sanitizeIdentPart(actionId)}`;
       registerHook(hookFn, [
         `local player = dialogObject:getOwnName()`,
@@ -3153,7 +3153,7 @@ function processActionBlock(block, parentVarName) {
     case 'npc_get_stock': {
       const shopId   = block.getFieldValue('SHOP_ID');
       const itemType = Number(block.getFieldValue('ITEM_TYPE') || 0);
-      const text     = block.getFieldValue('TEXT') || 'Stock disponible : %s';
+      const text     = block.getFieldValue('TEXT') || 'Available stock: %s';
       const hookFn   = `getStockHook_${sanitizeIdentPart(shopId)}_${itemType}`;
       registerHook(hookFn, [
         `local val = _stockGet(${luaStringLiteral(shopId)}, ${itemType})`,
@@ -3167,7 +3167,7 @@ function processActionBlock(block, parentVarName) {
     case 'npc_get_world': {
       const key    = block.getFieldValue('KEY');
       const defVal = block.getFieldValue('DEFAULT') || '';
-      const text   = block.getFieldValue('TEXT') || 'Événement actuel : %s';
+      const text   = block.getFieldValue('TEXT') || 'Current event: %s';
       const hookFn = `getWorldHook_${sanitizeIdentPart(key)}`;
       registerHook(hookFn, [
         `local val = _worldGet(${luaStringLiteral(key)}, ${luaStringLiteral(defVal)})`,
@@ -3180,14 +3180,14 @@ function processActionBlock(block, parentVarName) {
     }
     case 'npc_cooldown_clear': {
       const actionId = block.getFieldValue('ACTION_ID');
-      const success  = block.getFieldValue('SUCCESS') || 'Cooldown réinitialisé.';
+      const success  = block.getFieldValue('SUCCESS') || 'Cooldown cleared.';
       const hookFn   = `cooldownClearHook_${sanitizeIdentPart(actionId)}`;
       registerHook(hookFn, [
         `local player = dialogObject:getOwnName()`,
         `_dbExec("DELETE FROM npc_cooldowns WHERE player=? AND action_id=?", player, ${luaStringLiteral(actionId)})`,
         `return 0`,
       ]);
-      const waitVn    = makeNode('Réinitialisation cooldown...');
+      const waitVn    = makeNode('Clearing cooldown...');
       const successVn = makeNode(success);
       const waitNode  = getNode(waitVn);
       waitNode.hook      = hookFn;
@@ -3196,14 +3196,14 @@ function processActionBlock(block, parentVarName) {
     }
     case 'npc_rep_reset': {
       const npcId   = block.getFieldValue('NPC_ID');
-      const success = block.getFieldValue('SUCCESS') || 'Réputation réinitialisée.';
+      const success = block.getFieldValue('SUCCESS') || 'Reputation reset.';
       const hookFn  = `repResetHook_${sanitizeIdentPart(npcId)}`;
       registerHook(hookFn, [
         `local player = dialogObject:getOwnName()`,
         `_repSet(player, ${luaStringLiteral(npcId)}, 0)`,
         `return 0`,
       ]);
-      const waitVn    = makeNode('Réinitialisation réputation...');
+      const waitVn    = makeNode('Resetting reputation...');
       const successVn = makeNode(success);
       const waitNode  = getNode(waitVn);
       waitNode.hook      = hookFn;
@@ -3214,7 +3214,7 @@ function processActionBlock(block, parentVarName) {
       const shopId   = block.getFieldValue('SHOP_ID');
       const itemType = Number(block.getFieldValue('ITEM_TYPE') || 0);
       const qty      = Number(block.getFieldValue('QTY') || 0);
-      const success  = block.getFieldValue('SUCCESS') || 'Stock réinitialisé.';
+      const success  = block.getFieldValue('SUCCESS') || 'Stock reset.';
       const hookFn   = `stockResetHook_${sanitizeIdentPart(shopId)}_${itemType}`;
       registerHook(hookFn, [
         `if _dbGet("SELECT 1 FROM npc_shop_stock WHERE shop_id=? AND item_type=?", ${luaStringLiteral(shopId)}, ${itemType}) == nil then`,
@@ -3224,7 +3224,7 @@ function processActionBlock(block, parentVarName) {
         `end`,
         `return 0`,
       ]);
-      const waitVn    = makeNode('Réinitialisation stock...');
+      const waitVn    = makeNode('Resetting stock...');
       const successVn = makeNode(success);
       const waitNode  = getNode(waitVn);
       waitNode.hook      = hookFn;
@@ -3386,7 +3386,7 @@ function generateLua(scriptName) {
     lines.push(``);
     // --- Table npc_quests ---
     if (_state.usesQuestTable) {
-      lines.push(`-- Table npc_quests : état des quêtes par joueur`);
+      lines.push(`-- npc_quests: per-player quest state`);
       lines.push(`do`);
       lines.push(`  local _s = _npcDb:createStatement()`);
       lines.push(`  _s:execute("CREATE CACHED TABLE IF NOT EXISTS npc_quests (" ..`);
@@ -3404,7 +3404,7 @@ function generateLua(scriptName) {
     }
     // --- Table npc_memory (K/V générique) ---
     if (_state.usesHsqlMemory) {
-      lines.push(`-- Table npc_memory : stockage clé/valeur générique par joueur`);
+      lines.push(`-- npc_memory: generic per-player key/value store`);
       lines.push(`do`);
       lines.push(`  local _s = _npcDb:createStatement()`);
       lines.push(`  _s:execute("CREATE CACHED TABLE IF NOT EXISTS npc_memory (player VARCHAR(255) NOT NULL, k VARCHAR(255) NOT NULL, v LONGVARCHAR, PRIMARY KEY(player, k))")`);
@@ -3461,7 +3461,7 @@ function generateLua(scriptName) {
     lines.push(``);
     // --- Helpers quêtes dédiés ---
     if (_state.usesQuestTable) {
-      lines.push(`-- Helpers quêtes (npc_quests)`);
+      lines.push(`-- Quest helpers (npc_quests)`);
       lines.push(`local function _questSet(player, qid, status, step)`);
       lines.push(`  local now = luajava.bindClass("java.lang.System").currentTimeMillis()`);
       lines.push(`  if _dbGet("SELECT 1 FROM npc_quests WHERE player=? AND quest_id=?", player, qid) == nil then`);
@@ -3486,7 +3486,7 @@ function generateLua(scriptName) {
     }
     // --- Helpers mémoire K/V générique ---
     if (_state.usesHsqlMemory) {
-      lines.push(`-- Helpers mémoire générique (npc_memory)`);
+      lines.push(`-- Generic memory helpers (npc_memory)`);
       lines.push(`local function _memSet(player, key, val)`);
       lines.push(`  _dbExec("MERGE INTO npc_memory AS m USING (VALUES(CAST(? AS VARCHAR(255)),CAST(? AS VARCHAR(255)),CAST(? AS LONGVARCHAR))) AS v(p,k,vv) ON m.player=v.p AND m.k=v.k WHEN MATCHED THEN UPDATE SET v=v.vv WHEN NOT MATCHED THEN INSERT(player,k,v) VALUES(v.p,v.k,v.vv)", player, key, tostring(val))`);
       lines.push(`end`);
@@ -3515,7 +3515,7 @@ function generateLua(scriptName) {
     }
     // --- Table + helpers Réputation ---
     if (_state.usesReputation) {
-      lines.push(`-- Table npc_reputation : réputation par joueur/faction`);
+      lines.push(`-- npc_reputation: per-player reputation toward NPC/faction`);
       lines.push(`do`);
       lines.push(`  local _s = _npcDb:createStatement()`);
       lines.push(`  _s:execute("CREATE CACHED TABLE IF NOT EXISTS npc_reputation (player VARCHAR(255) NOT NULL, npc_id VARCHAR(255) NOT NULL, score INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (player, npc_id))")`);
@@ -3539,7 +3539,7 @@ function generateLua(scriptName) {
     }
     // --- Table + helpers Cooldowns ---
     if (_state.usesCooldowns) {
-      lines.push(`-- Table npc_cooldowns : cooldowns par joueur`);
+      lines.push(`-- npc_cooldowns: per-player action cooldowns`);
       lines.push(`do`);
       lines.push(`  local _s = _npcDb:createStatement()`);
       lines.push(`  _s:execute("CREATE CACHED TABLE IF NOT EXISTS npc_cooldowns (player VARCHAR(255) NOT NULL, action_id VARCHAR(255) NOT NULL, expires_at BIGINT NOT NULL DEFAULT 0, PRIMARY KEY (player, action_id))")`);
@@ -3567,7 +3567,7 @@ function generateLua(scriptName) {
     }
     // --- Table + helpers Stock boutique ---
     if (_state.usesShopStock) {
-      lines.push(`-- Table npc_shop_stock : stock boutique par item`);
+      lines.push(`-- npc_shop_stock: per-shop item stock`);
       lines.push(`do`);
       lines.push(`  local _s = _npcDb:createStatement()`);
       lines.push(`  _s:execute("CREATE CACHED TABLE IF NOT EXISTS npc_shop_stock (shop_id VARCHAR(255) NOT NULL, item_type INTEGER NOT NULL, quantity INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (shop_id, item_type))")`);
@@ -3596,7 +3596,7 @@ function generateLua(scriptName) {
     }
     // --- Table + helpers World state ---
     if (_state.usesWorldState) {
-      lines.push(`-- Table npc_world_state : état global partagé`);
+      lines.push(`-- npc_world_state: global shared world state`);
       lines.push(`do`);
       lines.push(`  local _s = _npcDb:createStatement()`);
       lines.push(`  _s:execute("CREATE CACHED TABLE IF NOT EXISTS npc_world_state (key VARCHAR(255) PRIMARY KEY, value LONGVARCHAR)")`);
