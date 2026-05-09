@@ -1076,13 +1076,8 @@ Blockly.Blocks['npc_check_rep'] = {
       .appendField(new Blockly.FieldDropdown([
         ['≥','>='], ['>','>'], ['=','=='], ['≠','~='], ['≤','<='], ['<','<']
       ]), 'OP')
-      .appendField(new Blockly.FieldNumber(0, -9999, 9999), 'VALUE');
-    this.appendDummyInput()
-      .appendField('If true →')
-      .appendField(new Blockly.FieldTextInput('Accès accordé.'), 'SUCCESS');
-    this.appendDummyInput()
-      .appendField('If false →')
-      .appendField(new Blockly.FieldTextInput('Reputation too low.'), 'FAIL');
+    this.appendStatementInput('THEN').setCheck(null).appendField('✅ Reputation OK →');
+    this.appendStatementInput('ELSE').setCheck(null).appendField('❌ Too low →');
     this.setPreviousStatement(true, null);
     this.setNextStatement(true, null);
     this.setColour('#c0392b');
@@ -1097,16 +1092,11 @@ Blockly.Blocks['npc_check_cooldown'] = {
       .appendField('⏱️ Check cooldown')
       .appendField(new Blockly.FieldTextInput('daily_delivery'), 'ACTION_ID')
       .appendField('est')
-      .appendField(new Blockly.FieldDropdown([
+      .appendField('is')
         ['expired (player can act)', 'expired'],
         ['active (player must wait)', 'active'],
-      ]), 'STATE');
-    this.appendDummyInput()
-      .appendField('If true →')
-      .appendField(new Blockly.FieldTextInput('Vous pouvez continuer.'), 'SUCCESS');
-    this.appendDummyInput()
-      .appendField('If false →')
-      .appendField(new Blockly.FieldTextInput('Vous devez encore attendre.'), 'FAIL');
+    this.appendStatementInput('THEN').setCheck(null).appendField('✅ Condition met →');
+    this.appendStatementInput('ELSE').setCheck(null).appendField('❌ Condition not met →');
     this.setPreviousStatement(true, null);
     this.setNextStatement(true, null);
     this.setColour('#1abc9c');
@@ -1125,13 +1115,8 @@ Blockly.Blocks['npc_check_stock'] = {
       .appendField(new Blockly.FieldDropdown([
         ['≥','>='], ['>','>'], ['=','=='], ['≠','~='], ['≤','<='], ['<','<']
       ]), 'OP')
-      .appendField(new Blockly.FieldNumber(1, 0), 'VALUE');
-    this.appendDummyInput()
-      .appendField('If true →')
-      .appendField(new Blockly.FieldTextInput('En stock.'), 'SUCCESS');
-    this.appendDummyInput()
-      .appendField('If false →')
-      .appendField(new Blockly.FieldTextInput('Rupture de stock.'), 'FAIL');
+    this.appendStatementInput('THEN').setCheck(null).appendField('✅ In stock →');
+    this.appendStatementInput('ELSE').setCheck(null).appendField('❌ Out of stock →');
     this.setPreviousStatement(true, null);
     this.setNextStatement(true, null);
     this.setColour('#2980b9');
@@ -1145,17 +1130,13 @@ Blockly.Blocks['npc_check_flag_db'] = {
     this.appendDummyInput()
       .appendField('🏳️ Check flag DB')
       .appendField(new Blockly.FieldTextInput('first_visit'), 'FLAG_NAME')
-      .appendField('est')
+      .appendField('is')
       .appendField(new Blockly.FieldDropdown([
         ['true (on)', 'true'],
         ['false (off)', 'false'],
       ]), 'VALUE');
-    this.appendDummyInput()
-      .appendField('If true →')
-      .appendField(new Blockly.FieldTextInput('Condition met.'), 'SUCCESS');
-    this.appendDummyInput()
-      .appendField('If false →')
-      .appendField(new Blockly.FieldTextInput('Condition not met.'), 'FAIL');
+    this.appendStatementInput('THEN').setCheck(null).appendField('✅ If true →');
+    this.appendStatementInput('ELSE').setCheck(null).appendField('❌ If false →');
     this.setPreviousStatement(true, null);
     this.setNextStatement(true, null);
     this.setColour('#8e44ad');
@@ -1174,16 +1155,11 @@ Blockly.Blocks['npc_check_world'] = {
         ['≥ nombre','>=num'], ['> nombre','>num'],
         ['= nombre','==num'], ['≤ nombre','<=num'], ['< nombre','<num'],
       ]), 'OP')
-      .appendField(new Blockly.FieldTextInput('true'), 'VALUE');
-    this.appendDummyInput()
-      .appendField('If true →')
-      .appendField(new Blockly.FieldTextInput('Event is active.'), 'SUCCESS');
-    this.appendDummyInput()
-      .appendField('If false →')
-      .appendField(new Blockly.FieldTextInput('Pas d\'événement en cours.'), 'FAIL');
+    this.appendStatementInput('THEN').setCheck(null).appendField('✅ If true →');
+    this.appendStatementInput('ELSE').setCheck(null).appendField('❌ If false →');
     this.setPreviousStatement(true, null);
     this.setNextStatement(true, null);
-    this.setColour('#7f8c8d');
+    this.setTooltip('CHECK WORLD STATE\nChecks a global world state value.\nTHEN = condition met, ELSE = condition not met.');
     this.setTooltip('CHECK WORLD STATE\nChecks a global world state value and branches to success or fail.');
   }
 };
@@ -1195,7 +1171,7 @@ Blockly.Blocks['npc_get_rep'] = {
       .appendField('⭐ Show reputation vs')
       .appendField(new Blockly.FieldTextInput('trading_guild'), 'NPC_ID');
     this.appendDummyInput()
-      .appendField('Texte (%s = valeur)')
+      .appendField('Text (%s = value)')
       .appendField(new Blockly.FieldTextInput('Your reputation: %s'), 'TEXT');
     this.setPreviousStatement(true, null);
     this.setNextStatement(true, null);
@@ -1211,12 +1187,12 @@ Blockly.Blocks['npc_get_cooldown_remaining'] = {
       .appendField('⏱️ Show cooldown remaining')
       .appendField(new Blockly.FieldTextInput('daily_delivery'), 'ACTION_ID');
     this.appendDummyInput()
-      .appendField('Texte (%s = secondes restantes)')
+      .appendField('Text (%s = seconds remaining)')
       .appendField(new Blockly.FieldTextInput('Come back in %s seconds.'), 'TEXT');
     this.setPreviousStatement(true, null);
     this.setNextStatement(true, null);
     this.setColour('#1abc9c');
-    this.setTooltip('GET COOLDOWN REMAINING\nAffiche le temps restant d\'un cooldown en secondes dans le dialog.');
+    this.setTooltip('GET COOLDOWN REMAINING\nShows the remaining cooldown time in seconds in the dialog.');
   }
 };
 
@@ -1336,12 +1312,8 @@ Blockly.Blocks['npc_check_inventory'] = {
       .appendField(new Blockly.FieldNumber(424, 0), 'ITEM_TYPE')
       .appendField('qty ≥')
       .appendField(new Blockly.FieldNumber(1, 1), 'COUNT');
-    this.appendDummyInput()
-      .appendField('If has item →')
-      .appendField(new Blockly.FieldTextInput('You have the item.'), 'SUCCESS');
-    this.appendDummyInput()
-      .appendField('If missing →')
-      .appendField(new Blockly.FieldTextInput('You do not have the required item.'), 'FAIL');
+    this.appendStatementInput('THEN').setCheck(null).appendField('✅ Has item →');
+    this.appendStatementInput('ELSE').setCheck(null).appendField('❌ Missing →');
     this.setPreviousStatement(true, null);
     this.setNextStatement(true, null);
     this.setColour('#f39c12');
@@ -1362,12 +1334,8 @@ Blockly.Blocks['npc_take_item'] = {
       .appendField(new Blockly.FieldNumber(424, 0), 'ITEM_TYPE')
       .appendField('qty')
       .appendField(new Blockly.FieldNumber(1, 1), 'COUNT');
-    this.appendDummyInput()
-      .appendField('If taken →')
-      .appendField(new Blockly.FieldTextInput('Item received.'), 'SUCCESS');
-    this.appendDummyInput()
-      .appendField('If not found →')
-      .appendField(new Blockly.FieldTextInput('Item not found in inventory.'), 'FAIL');
+    this.appendStatementInput('THEN').setCheck(null).appendField('✅ Taken →');
+    this.appendStatementInput('ELSE').setCheck(null).appendField('❌ Not found →');
     this.setPreviousStatement(true, null);
     this.setNextStatement(true, null);
     this.setColour('#f39c12');
@@ -1451,12 +1419,8 @@ Blockly.Blocks['npc_give_meta_item'] = {
 Blockly.Blocks['npc_if_condition'] = {
   init() {
     this.appendValueInput('COND').setCheck('npc_condition').appendField('🔀 If condition');
-    this.appendDummyInput()
-      .appendField('If true →')
-      .appendField(new Blockly.FieldTextInput('Condition met.'), 'SUCCESS');
-    this.appendDummyInput()
-      .appendField('If false →')
-      .appendField(new Blockly.FieldTextInput('Condition failed.'), 'FAIL');
+    this.appendStatementInput('THEN').setCheck(null).appendField('✅ If true →');
+    this.appendStatementInput('ELSE').setCheck(null).appendField('❌ If false →');
     this.setPreviousStatement(true, null);
     this.setNextStatement(true, null);
     this.setColour('#16a085');
@@ -1475,12 +1439,8 @@ Blockly.Blocks['npc_check_credits'] = {
       .appendField('💰 Check player credits ≥')
       .appendField(new Blockly.FieldNumber(50000, 0), 'AMOUNT');
     this.appendValueInput('AMOUNT_VAR').setCheck(null).appendField('or variable');
-    this.appendDummyInput()
-      .appendField('If enough →')
-      .appendField(new Blockly.FieldTextInput('You have enough credits!'), 'SUCCESS');
-    this.appendDummyInput()
-      .appendField('If not enough →')
-      .appendField(new Blockly.FieldTextInput("You don't have enough credits."), 'FAIL');
+    this.appendStatementInput('THEN').setCheck(null).appendField('✅ If enough →');
+    this.appendStatementInput('ELSE').setCheck(null).appendField('❌ If not enough →');
     this.setPreviousStatement(true, null);
     this.setNextStatement(true, null);
     this.setColour('#16a085');
@@ -1515,12 +1475,8 @@ Blockly.Blocks['npc_check_player_value'] = {
       ]), 'OP')
       .appendField(new Blockly.FieldNumber(0), 'VALUE');
     this.appendValueInput('VALUE_VAR').setCheck(null).appendField('or variable');
-    this.appendDummyInput()
-      .appendField('If true →')
-      .appendField(new Blockly.FieldTextInput('Condition met.'), 'SUCCESS');
-    this.appendDummyInput()
-      .appendField('If false →')
-      .appendField(new Blockly.FieldTextInput('Condition failed.'), 'FAIL');
+    this.appendStatementInput('THEN').setCheck(null).appendField('✅ If true →');
+    this.appendStatementInput('ELSE').setCheck(null).appendField('❌ If false →');
     this.setPreviousStatement(true, null);
     this.setNextStatement(true, null);
     this.setColour('#16a085');
@@ -1549,13 +1505,8 @@ Blockly.Blocks['npc_check_flag'] = {
       .appendField(new Blockly.FieldDropdown([
         ['is ON / true', 'true'],
         ['is OFF / false', 'false'],
-      ]), 'EXPECT');
-    this.appendDummyInput()
-      .appendField('If true →')
-      .appendField(new Blockly.FieldTextInput('Yes.'), 'SUCCESS');
-    this.appendDummyInput()
-      .appendField('If false →')
-      .appendField(new Blockly.FieldTextInput('No.'), 'FAIL');
+    this.appendStatementInput('THEN').setCheck(null).appendField('✅ If ON →');
+    this.appendStatementInput('ELSE').setCheck(null).appendField('❌ If OFF →');
     this.setPreviousStatement(true, null);
     this.setNextStatement(true, null);
     this.setColour('#16a085');
@@ -1575,12 +1526,8 @@ Blockly.Blocks['npc_check_custom_condition'] = {
     this.appendDummyInput()
       .appendField('🧩 Custom condition')
       .appendField(new Blockly.FieldTextInput('dialogObject:getEntity():getCredits() >= 50000'), 'EXPR');
-    this.appendDummyInput()
-      .appendField('If true →')
-      .appendField(new Blockly.FieldTextInput('Condition met.'), 'SUCCESS');
-    this.appendDummyInput()
-      .appendField('If false →')
-      .appendField(new Blockly.FieldTextInput('Condition failed.'), 'FAIL');
+    this.appendStatementInput('THEN').setCheck(null).appendField('✅ If true →');
+    this.appendStatementInput('ELSE').setCheck(null).appendField('❌ If false →');
     this.setPreviousStatement(true, null);
     this.setNextStatement(true, null);
     this.setColour('#16a085');
@@ -2247,6 +2194,22 @@ function makeBinaryConditionAction(hookFn, bodyLines, waitText, successText, fai
   return waitVn;
 }
 
+// Branch action: uses THEN/ELSE statement connectors instead of fixed text
+function makeBranchAction(hookFn, bodyLines, block, waitText) {
+  registerHook(hookFn, bodyLines);
+  const waitVn   = makeNode(waitText || 'Checking...');
+  const waitNode = getNode(waitVn);
+  waitNode.hook  = hookFn;
+  // Process THEN branch
+  const thenVn = processActions(block, 'THEN', waitVn);
+  const elseVn = processActions(block, 'ELSE', waitVn);
+  waitNode.reactions = [
+    { code: 0,  target: thenVn  || makeNode('Done.') },
+    { code: -1, target: elseVn  || makeNode('Condition not met.') },
+  ];
+  return waitVn;
+}
+
 function buildConditionExpression(block) {
   if (!block) return 'false';
   switch (block.type) {
@@ -2681,35 +2644,27 @@ function processActionBlock(block, parentVarName) {
     case 'npc_if_condition': {
       const condBlock = block.getInputTargetBlock('COND');
       const expr      = buildConditionExpression(condBlock);
-      const success   = block.getFieldValue('SUCCESS');
-      const fail      = block.getFieldValue('FAIL');
       const hookFn    = `ifConditionHook_${Math.abs(hashCode(expr))}`;
-      return makeBinaryConditionAction(hookFn, [
-        `-- NPCC_IF_CONDITION`,
+      return makeBranchAction(hookFn, [
         `local _cond = ${expr}`,
         `if _cond then return 0 end`,
         `return -1`,
-      ], 'Checking condition...', success, fail);
+      ], block, 'Checking condition...');
     }
     case 'npc_check_credits': {
       const amount  = getOptionalVarName(block, 'AMOUNT_VAR') || block.getFieldValue('AMOUNT');
-      const success = block.getFieldValue('SUCCESS');
-      const fail    = block.getFieldValue('FAIL');
       const hookFn  = `checkCreditsHook_${sanitizeIdentPart(amount)}`;
-      return makeBinaryConditionAction(hookFn, [
+      return makeBranchAction(hookFn, [
         `local ps = dialogObject:getEntity()`,
         `if ps == nil then return -1 end`,
-        `local credits = ps:getCredits()`,
-        `if credits >= ${amount} then return 0 end`,
+        `if ps:getCredits() >= ${amount} then return 0 end`,
         `return -1`,
-      ], 'Checking credits...', success, fail);
+      ], block, 'Checking credits...');
     }
     case 'npc_check_player_value': {
       const valueType = block.getFieldValue('VALUE_TYPE');
       const op        = block.getFieldValue('OP');
       const value     = getOptionalVarName(block, 'VALUE_VAR') || block.getFieldValue('VALUE');
-      const success   = block.getFieldValue('SUCCESS');
-      const fail      = block.getFieldValue('FAIL');
       const hookFn    = `checkValueHook_${valueType}_${String(op).replace(/\W/g,'_')}_${sanitizeIdentPart(value)}`;
       const valueExprMap = {
         credits:   'ps:getCredits()',
@@ -2719,49 +2674,35 @@ function processActionBlock(block, parentVarName) {
         sectorId:  'ps:getCurrentSectorId()',
       };
       const valueExpr = valueExprMap[valueType] || 'ps:getCredits()';
-      return makeBinaryConditionAction(hookFn, [
+      return makeBranchAction(hookFn, [
         `local ps = dialogObject:getEntity()`,
         `if ps == nil then return -1 end`,
-        `local val = ${valueExpr}`,
-        `if val ${op} ${value} then return 0 end`,
+        `if ${valueExpr} ${op} ${value} then return 0 end`,
         `return -1`,
-      ], 'Checking condition...', success, fail);
+      ], block, 'Checking condition...');
     }
     case 'npc_check_flag': {
       const flag    = block.getFieldValue('FLAG');
       const expect  = block.getFieldValue('EXPECT');
-      const success = block.getFieldValue('SUCCESS');
-      const fail    = block.getFieldValue('FAIL');
       const hookFn  = `checkFlagHook_${flag}_${expect}`;
       const flagExprMap = {
         creative: 'ps ~= nil and ps:isCreativeModeEnabled()',
         inTeam:   'dialogObject:isConverationPartnerInTeam()',
       };
-      const flagExpr = flagExprMap[flag] || 'false';
+      const flagExpr  = flagExprMap[flag] || 'false';
       const expectLua = expect === 'true' ? 'true' : 'false';
       const bodyLines = flag === 'creative'
-        ? [
-            `local ps = dialogObject:getEntity()`,
-            `local ok = ${flagExpr}`,
-            `if ok == ${expectLua} then return 0 end`,
-            `return -1`,
-          ]
-        : [
-            `local ok = ${flagExpr}`,
-            `if ok == ${expectLua} then return 0 end`,
-            `return -1`,
-          ];
-      return makeBinaryConditionAction(hookFn, bodyLines, 'Checking flag...', success, fail);
+        ? [`local ps = dialogObject:getEntity()`, `if (${flagExpr}) == ${expectLua} then return 0 end`, `return -1`]
+        : [`if (${flagExpr}) == ${expectLua} then return 0 end`, `return -1`];
+      return makeBranchAction(hookFn, bodyLines, block, 'Checking flag...');
     }
     case 'npc_check_custom_condition': {
-      const expr    = block.getFieldValue('EXPR');
-      const success = block.getFieldValue('SUCCESS');
-      const fail    = block.getFieldValue('FAIL');
-      const hookFn  = `customConditionHook_${Math.abs(hashCode(expr))}`;
-      return makeBinaryConditionAction(hookFn, [
+      const expr   = block.getFieldValue('EXPR');
+      const hookFn = `customConditionHook_${Math.abs(hashCode(expr))}`;
+      return makeBranchAction(hookFn, [
         `if (${expr}) then return 0 end`,
         `return -1`,
-      ], 'Checking custom condition...', success, fail);
+      ], block, 'Checking...');
     }
     case 'npc_get_info': {
       const infoType = block.getFieldValue('INFO_TYPE');
@@ -3160,65 +3101,55 @@ function processActionBlock(block, parentVarName) {
       return waitVn;
     }
     case 'npc_check_rep': {
-      const npcId   = block.getFieldValue('NPC_ID');
-      const op      = block.getFieldValue('OP') || '>=';
-      const value   = Number(block.getFieldValue('VALUE') || 0);
-      const success = block.getFieldValue('SUCCESS') || 'Access granted.';
-      const fail    = block.getFieldValue('FAIL')    || 'Reputation too low.';
-      const hookFn  = `checkRepHook_${sanitizeIdentPart(npcId)}_${String(op).replace(/\W/g,'_')}_${value}`;
-      return makeBinaryConditionAction(hookFn, [
+      const npcId  = block.getFieldValue('NPC_ID');
+      const op     = block.getFieldValue('OP') || '>=';
+      const value  = Number(block.getFieldValue('VALUE') || 0);
+      const hookFn = `checkRepHook_${sanitizeIdentPart(npcId)}_${String(op).replace(/\W/g,'_')}_${value}`;
+      return makeBranchAction(hookFn, [
         `local player = dialogObject:getOwnName()`,
         `if _repGet(player, ${luaStringLiteral(npcId)}) ${op} ${value} then return 0 end`,
         `return -1`,
-      ], 'Checking reputation...', success, fail);
+      ], block, 'Checking reputation...');
     }
     case 'npc_check_cooldown': {
       const actionId = block.getFieldValue('ACTION_ID');
       const state    = block.getFieldValue('STATE') || 'expired';
-      const success  = block.getFieldValue('SUCCESS') || 'You may proceed.';
-      const fail     = block.getFieldValue('FAIL')    || 'You must wait longer.';
       const hookFn   = `checkCooldownHook_${sanitizeIdentPart(actionId)}_${state}`;
       const cond     = state === 'expired'
         ? `not _cooldownActive(player, ${luaStringLiteral(actionId)})`
         : `_cooldownActive(player, ${luaStringLiteral(actionId)})`;
-      return makeBinaryConditionAction(hookFn, [
+      return makeBranchAction(hookFn, [
         `local player = dialogObject:getOwnName()`,
         `if ${cond} then return 0 end`,
         `return -1`,
-      ], 'Checking cooldown...', success, fail);
+      ], block, 'Checking cooldown...');
     }
     case 'npc_check_stock': {
       const shopId   = block.getFieldValue('SHOP_ID');
       const itemType = Number(block.getFieldValue('ITEM_TYPE') || 0);
       const op       = block.getFieldValue('OP') || '>=';
       const value    = Number(block.getFieldValue('VALUE') || 1);
-      const success  = block.getFieldValue('SUCCESS') || 'In stock.';
-      const fail     = block.getFieldValue('FAIL')    || 'Out of stock.';
       const hookFn   = `checkStockHook_${sanitizeIdentPart(shopId)}_${itemType}`;
-      return makeBinaryConditionAction(hookFn, [
+      return makeBranchAction(hookFn, [
         `if _stockGet(${luaStringLiteral(shopId)}, ${itemType}) ${op} ${value} then return 0 end`,
         `return -1`,
-      ], 'Checking stock...', success, fail);
+      ], block, 'Checking stock...');
     }
     case 'npc_check_flag_db': {
       const flagName = block.getFieldValue('FLAG_NAME');
       const value    = block.getFieldValue('VALUE') || 'true';
-      const success  = block.getFieldValue('SUCCESS') || 'Condition met.';
-      const fail     = block.getFieldValue('FAIL')    || 'Condition not met.';
       const hookFn   = `checkFlagDbHook_${sanitizeIdentPart(flagName)}_${value}`;
-      return makeBinaryConditionAction(hookFn, [
+      return makeBranchAction(hookFn, [
         `local player = dialogObject:getOwnName()`,
         `if _flagGet(player, ${luaStringLiteral(flagName)}) == ${value} then return 0 end`,
         `return -1`,
-      ], 'Checking flag...', success, fail);
+      ], block, 'Checking flag...');
     }
     case 'npc_check_world': {
-      const key   = block.getFieldValue('KEY');
-      const op    = block.getFieldValue('OP') || '==text';
-      const value = block.getFieldValue('VALUE') || 'true';
-      const success = block.getFieldValue('SUCCESS') || 'Event is active.';
-      const fail    = block.getFieldValue('FAIL')    || 'No event in progress.';
-      const hookFn  = `checkWorldHook_${sanitizeIdentPart(key)}`;
+      const key    = block.getFieldValue('KEY');
+      const op     = block.getFieldValue('OP') || '==text';
+      const value  = block.getFieldValue('VALUE') || 'true';
+      const hookFn = `checkWorldHook_${sanitizeIdentPart(key)}`;
       let condLine;
       if (op.endsWith('text')) {
         const luaOp = op.replace('text', '').trim();
@@ -3227,10 +3158,7 @@ function processActionBlock(block, parentVarName) {
         const luaOp = op.replace('num', '').trim();
         condLine = `if _worldGetNumber(${luaStringLiteral(key)}, 0) ${luaOp} ${Number(value)||0} then return 0 end`;
       }
-      return makeBinaryConditionAction(hookFn, [
-        condLine,
-        `return -1`,
-      ], 'Checking world state...', success, fail);
+      return makeBranchAction(hookFn, [condLine, `return -1`], block, 'Checking world state...');
     }
     case 'npc_get_rep': {
       const npcId  = block.getFieldValue('NPC_ID');
@@ -3361,10 +3289,8 @@ function processActionBlock(block, parentVarName) {
     case 'npc_check_inventory': {
       const itemType = Number(block.getFieldValue('ITEM_TYPE') || 0);
       const count    = Number(block.getFieldValue('COUNT')     || 1);
-      const success  = block.getFieldValue('SUCCESS') || 'You have the item.';
-      const fail     = block.getFieldValue('FAIL')    || 'You do not have the required item.';
       const hookFn   = `checkInvHook_${itemType}_${count}`;
-      return makeBinaryConditionAction(hookFn, [
+      return makeBranchAction(hookFn, [
         `local inv = dialogObject:getEntity():getInventory()`,
         `if inv == nil then return -1 end`,
         `local total = 0`,
@@ -3375,13 +3301,11 @@ function processActionBlock(block, parentVarName) {
         `end`,
         `if total >= ${count} then return 0 end`,
         `return -1`,
-      ], 'Checking inventory...', success, fail);
+      ], block, 'Checking inventory...');
     }
     case 'npc_take_item': {
       const itemType = Number(block.getFieldValue('ITEM_TYPE') || 0);
       const count    = Number(block.getFieldValue('COUNT')     || 1);
-      const success  = block.getFieldValue('SUCCESS') || 'Item received.';
-      const fail     = block.getFieldValue('FAIL')    || 'Item not found in inventory.';
       const hookFn   = `takeItemHook_${itemType}_${count}`;
       registerHook(hookFn, [
         `local inv = dialogObject:getEntity():getInventory()`,
@@ -3413,8 +3337,13 @@ function processActionBlock(block, parentVarName) {
       const successVn = makeNode(success);
       const failVn    = makeNode(fail);
       const waitNode  = getNode(waitVn);
-      waitNode.hook      = hookFn;
-      waitNode.reactions = [{ code: 0, target: successVn }, { code: -1, target: failVn }];
+      waitNode.hook = hookFn;
+      const thenVnTake = processActions(block, 'THEN', waitVn);
+      const elseVnTake = processActions(block, 'ELSE', waitVn);
+      waitNode.reactions = [
+        { code:  0, target: thenVnTake || makeNode('Done.') },
+        { code: -1, target: elseVnTake || makeNode('Not found.') },
+      ];
       return waitVn;
     }
     case 'npc_send_message': {
@@ -4237,11 +4166,16 @@ function loadExample(name) {  // name: 'merchant'|'quest_giver'|'daily_trader'|'
           "type": "npc_choice", "fields": { "LABEL": "Buy today's special item." },
           "inputs": { "ACTIONS": { "block": {
             "type": "npc_check_cooldown",
-            "fields": {
-              "ACTION_ID": "daily_deal",
-              "STATE": "expired",
-              "SUCCESS": "Great choice! Here is your item.",
-              "FAIL": "You already bought today's deal. Come back tomorrow!"
+            "fields": { "ACTION_ID": "daily_deal", "STATE": "expired" },
+            "inputs": {
+              "THEN": { "block": {
+                "type": "npc_cooldown_set",
+                "fields": { "ACTION_ID": "daily_deal", "DURATION_SEC": 86400, "SUCCESS": "Deal recorded. Enjoy your item!" }
+              }},
+              "ELSE": { "block": {
+                "type": "npc_send_message",
+                "fields": { "TYPE": "warn", "TEXT": "You already bought today's deal. Come back tomorrow!" }
+              }}
             }
           }}},
           "next": { "block": { "type": "npc_goback", "fields": { "LABEL": "Maybe later." } } }
@@ -4262,12 +4196,16 @@ function loadExample(name) {  // name: 'merchant'|'quest_giver'|'daily_trader'|'
           "type": "npc_choice", "fields": { "LABEL": "I wish to enter the vault." },
           "inputs": { "ACTIONS": { "block": {
             "type": "npc_check_rep",
-            "fields": {
-              "NPC_ID": "trading_guild",
-              "OP": ">=",
-              "VALUE": 100,
-              "SUCCESS": "You are welcome. Proceed.",
-              "FAIL": "Your reputation is too low. Earn our trust first."
+            "fields": { "NPC_ID": "trading_guild", "OP": ">=", "VALUE": 100 },
+            "inputs": {
+              "THEN": { "block": {
+                "type": "npc_send_message",
+                "fields": { "TYPE": "info", "TEXT": "Access granted. Welcome." }
+              }},
+              "ELSE": { "block": {
+                "type": "npc_send_message",
+                "fields": { "TYPE": "warn", "TEXT": "Your reputation is too low. Earn our trust first." }
+              }}
             }
           }}},
           "next": { "block": {
@@ -4291,16 +4229,17 @@ function loadExample(name) {  // name: 'merchant'|'quest_giver'|'daily_trader'|'
           "type": "npc_choice", "fields": { "LABEL": "Yes, here are the 5 ore samples." },
           "inputs": { "ACTIONS": { "block": {
             "type": "npc_take_item",
-            "fields": {
-              "ITEM_TYPE": 62,
-              "COUNT": 5,
-              "SUCCESS": "Thank you! Here are your 25 000 credits.",
-              "FAIL": "You don't have 5 Fatanium ore. Come back when you do."
-            },
-            "next": { "block": {
-              "type": "npc_give_credits",
-              "fields": { "AMOUNT": 25000, "SUCCESS": "Credits transferred. Well done!" }
-            }}
+            "fields": { "ITEM_TYPE": 62, "COUNT": 5 },
+            "inputs": {
+              "THEN": { "block": {
+                "type": "npc_give_credits",
+                "fields": { "AMOUNT": 25000, "SUCCESS": "Credits transferred. Well done!" }
+              }},
+              "ELSE": { "block": {
+                "type": "npc_send_message",
+                "fields": { "TYPE": "warn", "TEXT": "You need 5x Fatanium Ore (item 62)." }
+              }}
+            }
           }}},
           "next": { "block": {
             "type": "npc_choice", "fields": { "LABEL": "I need more time." },
