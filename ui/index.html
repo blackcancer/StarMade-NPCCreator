@@ -385,12 +385,14 @@ Blockly.Blocks['npc_var_ref'] = {
   init() {
     this.appendDummyInput()
       .appendField('🔗 Var')
-      .appendField(new Blockly.FieldTextInput('priceLaser'), 'NAME');
+      .appendField(new Blockly.FieldDropdown(function() {
+        return getVariableDropdownOptions(this.getSourceBlock());
+      }), 'NAME');
     this.setOutput(true, null);
     this.setColour('#8e44ad');
     this.setTooltip(
-      'VARIABLE REFERENCE\nReference a global variable by name.\n\n' +
-      'Connect it into an optional "var" input on supported blocks to emit the variable name instead of a literal value.'
+      'VARIABLE REFERENCE\nReference a global variable by dropdown.\n\n' +
+      'If the referenced variable does not exist, the block shows a warning and Lua generation stops until you add a matching Variable block.'
     );
   }
 };
@@ -1542,6 +1544,31 @@ function luaVarLiteral(mode, value) {
   return String(value || 'nil');
 }
 
+function collectDeclaredVariablesFromBlocks(blocks) {
+  const vars = new Map();
+  for (const b of blocks || []) {
+    if (b.type !== 'npc_lua_var') continue;
+    const name = String(b.getFieldValue('NAME') || '').trim();
+    if (!name) continue;
+    vars.set(name, {
+      value: String(b.getFieldValue('VALUE') || ''),
+      mode: b.getFieldValue('MODE') || 'raw',
+    });
+  }
+  return vars;
+}
+
+function getVariableDropdownOptions(sourceBlock) {
+  const ws = sourceBlock?.workspace || workspace;
+  const blocks = ws?.getAllBlocks ? ws.getAllBlocks(false) : [];
+  const vars = collectDeclaredVariablesFromBlocks(blocks);
+  const current = String(sourceBlock?.getFieldValue?.('NAME') || '').trim();
+  const options = Array.from(vars.keys()).sort((a, b) => a.localeCompare(b)).map(name => [name, name]);
+  if (current && !vars.has(current)) options.unshift([`⚠ ${current} (missing)`, current]);
+  if (options.length === 0) options.push(['(no variable)', '']);
+  return options;
+}
+
 function sanitizeIdentPart(value) {
   return String(value || '').replace(/\W+/g, '_').replace(/^_+|_+$/g, '') || 'value';
 }
@@ -1606,16 +1633,7 @@ function syncVariableDisplays() {
   _syncingVarDisplays = true;
   try {
     const allBlocks = workspace.getAllBlocks(false);
-    const vars = new Map();
-    for (const b of allBlocks) {
-      if (b.type !== 'npc_lua_var') continue;
-      const name = String(b.getFieldValue('NAME') || '').trim();
-      if (!name) continue;
-      vars.set(name, {
-        value: String(b.getFieldValue('VALUE') || ''),
-        mode: b.getFieldValue('MODE') || 'raw',
-      });
-    }
+    const vars = collectDeclaredVariablesFromBlocks(allBlocks);
     for (const [type, inputName, fieldName, numeric] of VAR_SYNC_BINDINGS) {
       for (const b of allBlocks) {
         if (b.type !== type) continue;
@@ -1632,6 +1650,36 @@ function syncVariableDisplays() {
   } finally {
     _syncingVarDisplays = false;
   }
+}
+
+function updateVariableReferenceWarnings() {
+  if (!workspace?.getAllBlocks) return;
+  const allBlocks = workspace.getAllBlocks(false);
+  const vars = collectDeclaredVariablesFromBlocks(allBlocks);
+  for (const b of allBlocks) {
+    if (b.type !== 'npc_var_ref') continue;
+    const name = String(b.getFieldValue('NAME') || '').trim();
+    const isConnected = !!(b.getParent && b.getParent());
+    if (!name) {
+      b.setWarningText(isConnected ? 'Select a variable.' : null);
+    } else if (isConnected && !vars.has(name)) {
+      b.setWarningText(`Variable not initialized: ${name}`);
+    } else {
+      b.setWarningText(null);
+    }
+  }
+}
+
+function getMissingConnectedVariables(allBlocks) {
+  const vars = collectDeclaredVariablesFromBlocks(allBlocks);
+  const missing = new Set();
+  for (const b of allBlocks) {
+    if (b.type !== 'npc_var_ref') continue;
+    if (!(b.getParent && b.getParent())) continue;
+    const name = String(b.getFieldValue('NAME') || '').trim();
+    if (name && !vars.has(name)) missing.add(name);
+  }
+  return Array.from(missing).sort((a, b) => a.localeCompare(b));
 }
 
 function getNode(vn) {
@@ -2335,6 +2383,10 @@ function generateLua(scriptName) {
 
   // Find root block
   const allBlocks = workspace.getAllBlocks(false);
+  const missingVars = getMissingConnectedVariables(allBlocks);
+  if (missingVars.length > 0) {
+    throw new Error('Undefined variable references: ' + missingVars.join(', ') + '. Add matching Variable block(s).');
+  }
 
   // Collect standalone globals / helpers
   for (const b of allBlocks) {
@@ -2936,16 +2988,16 @@ function parseLuaToBlocklyState(lua) {
     }
   }
 
+  const beforeCreateNoFns = beforeCreate.replace(anyFnRe, '');
+
   const constRe = /^\s*(?:local\s+)?(\w+)\s*=\s*(-?\d+(?:\.\d+)?|"(?:[^"\\]|\\.)*")\s*;?\s*$/gm;
   let cm;
-  while ((cm = constRe.exec(beforeCreate)) !== null) {
+  while ((cm = constRe.exec(beforeCreateNoFns)) !== null) {
     let val = cm[2];
     if (/^"/.test(val)) val = val.slice(1, -1).replace(/\\n/g, '\n').replace(/\\"/g, '"').replace(/\\\\/g, '\\');
     else val = Number(val);
     constVals[cm[1]] = val;
   }
-
-  const beforeCreateNoFns = beforeCreate.replace(anyFnRe, '');
   const globalVarRe = /^\s*(\w+)\s*=\s*(-?\d+(?:\.\d+)?|"(?:[^"\\]|\\.)*")\s*;?\s*$/gm;
   let gv;
   while ((gv = globalVarRe.exec(beforeCreateNoFns)) !== null) {
@@ -3720,6 +3772,7 @@ const workspace = Blockly.inject('blocklyDiv', {
 // Auto-generate on change
 workspace.addChangeListener(() => {
   syncVariableDisplays();
+  updateVariableReferenceWarnings();
   if (workspace.getAllBlocks(false).some(b => b.type === 'npc_greeting')) {
     generateAndShow();
   }
