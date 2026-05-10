@@ -46,3 +46,48 @@ export function createI18n() {
   const setLanguage = (lang) => { if (translations[lang]) { current = lang; localStorage.setItem('npc_creator_lang', lang); apply(); } };
   return { t, apply, setLanguage, getLanguage: () => current };
 }
+
+
+const blockPhraseMap = {
+  fr: new Map([['Choices →','Choix →'],['Duration (ms)','Durée (ms)'],['Default','Défaut'],['Text (%s = value)','Texte (%s = valeur)'],['✅ Yes →','✅ Oui →'],['❌ No →','❌ Non →'],['or var','ou variable'],['value var','variable valeur'],['default var','variable défaut'],['status is','statut ='],['step','étape'],['is','est'],['exists','existe'],["does NOT exist","N'existe PAS"],['is ON','est ACTIVÉ'],['is OFF','est DÉSACTIVÉ']]),
+  de: new Map([['Choices →','Optionen →'],['Duration (ms)','Dauer (ms)'],['Default','Standard'],['Text (%s = value)','Text (%s = Wert)'],['✅ Yes →','✅ Ja →'],['❌ No →','❌ Nein →'],['or var','oder Variable'],['value var','Wert-Variable'],['default var','Standard-Variable']]),
+  es: new Map([['Choices →','Opciones →'],['Duration (ms)','Duración (ms)'],['Default','Predeterminado'],['Text (%s = value)','Texto (%s = valor)'],['✅ Yes →','✅ Sí →'],['❌ No →','❌ No →'],['or var','o variable'],['value var','variable valor'],['default var','variable por defecto']]),
+};
+
+function translateLoose(lang, text) {
+  if (!text || lang === 'en') return text;
+  let out = String(text);
+  for (const [k,v] of (blockPhraseMap[lang] || new Map()).entries()) out = out.split(k).join(v);
+  return out;
+}
+
+export function patchBlocklyLocalization(Blockly, getLang) {
+  const inputProto = Blockly?.Input?.prototype;
+  const blockProto = Blockly?.Block?.prototype;
+  if (!inputProto || !blockProto || inputProto.__npcLocalized) return;
+
+  const appendFieldOrig = inputProto.appendField;
+  inputProto.appendField = function(field, opt_name) {
+    if (typeof field === 'string') field = translateLoose(getLang(), field);
+    return appendFieldOrig.call(this, field, opt_name);
+  };
+
+  const setTooltipOrig = blockProto.setTooltip;
+  blockProto.setTooltip = function(newTip) {
+    if (typeof newTip === 'string') newTip = translateLoose(getLang(), newTip);
+    return setTooltipOrig.call(this, newTip);
+  };
+
+  inputProto.__npcLocalized = true;
+}
+
+export function localizeToolboxXml(xml, lang) {
+  const maps = {
+    fr: [['📋 Dialog','📋 Dialogue'],['🧮 Variables','🧮 Variables'],['👥 Crew','👥 Équipage'],['🛒 Items','🛒 Objets'],['⚡ World','⚡ Monde'],['🔗 Sequences','🔗 Séquences'],['💾 SQLite','💾 SQLite'],['📜 Quests','📜 Quêtes'],['⭐ Reputation','⭐ Réputation'],['⏱ Cooldowns','⏱ Temps de recharge'],['📦 Stock','📦 Stock'],['🚩 Flags &amp; World','🚩 Drapeaux &amp; Monde'],['✅ Branches','✅ Branches'],['🧩 Expressions','🧩 Expressions'],['🔧 Advanced','🔧 Avancé']],
+    de: [['📋 Dialog','📋 Dialog'],['🧮 Variables','🧮 Variablen'],['👥 Crew','👥 Crew'],['🛒 Items','🛒 Gegenstände'],['⚡ World','⚡ Welt'],['🔗 Sequences','🔗 Sequenzen'],['💾 SQLite','💾 SQLite'],['📜 Quests','📜 Quests'],['⭐ Reputation','⭐ Ruf'],['⏱ Cooldowns','⏱ Abklingzeiten'],['📦 Stock','📦 Bestand'],['🚩 Flags &amp; World','🚩 Flags &amp; Welt'],['✅ Branches','✅ Verzweigungen'],['🧩 Expressions','🧩 Ausdrücke'],['🔧 Advanced','🔧 Erweitert']],
+    es: [['📋 Dialog','📋 Diálogo'],['🧮 Variables','🧮 Variables'],['👥 Crew','👥 Tripulación'],['🛒 Items','🛒 Objetos'],['⚡ World','⚡ Mundo'],['🔗 Sequences','🔗 Secuencias'],['💾 SQLite','💾 SQLite'],['📜 Quests','📜 Misiones'],['⭐ Reputation','⭐ Reputación'],['⏱ Cooldowns','⏱ Enfriamientos'],['📦 Stock','📦 Inventario'],['🚩 Flags &amp; World','🚩 Banderas &amp; Mundo'],['✅ Branches','✅ Ramas'],['🧩 Expressions','🧩 Expresiones'],['🔧 Advanced','🔧 Avanzado']]
+  };
+  let out = xml;
+  for (const [k,v] of (maps[lang] || [])) out = out.replaceAll(`name="${k}"`, `name="${v}"`);
+  return out;
+}

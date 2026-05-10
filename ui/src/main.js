@@ -12,7 +12,7 @@ import { showTab, generateAndShow, copyLua, downloadLua,
          clearWorkspace, loadExample }                from './ui.js';
 import { initHelpPanel }                              from './help.js';
 import { createToolboxElement }                       from './toolbox.js';
-import { createI18n }                                 from './i18n.js';
+import { createI18n, patchBlocklyLocalization, localizeToolboxXml } from './i18n.js';
 
 // ── Inline the core generator functions from the monolith ─────────────────────
 // (processGreeting, processActionBlock, buildConditionExpression are in core.js)
@@ -28,14 +28,15 @@ const Blockly = window.Blockly;
 
 // ── Register all custom blocks ────────────────────────────────────────────────
 
-registerAllBlocks(Blockly);
-initHelpPanel();
 const i18n = createI18n();
+patchBlocklyLocalization(Blockly, i18n.getLanguage);
+registerAllBlocks(Blockly);
+initHelpPanel(i18n.getLanguage());
 
 // ── Toolbox ───────────────────────────────────────────────────────────────────
 
 const workspace = Blockly.inject('blocklyDiv', {
-  toolbox: createToolboxElement(),
+  toolbox: createToolboxElement((xml) => localizeToolboxXml(xml, i18n.getLanguage())),
   grid:    { spacing: 20, length: 3, colour: '#1a2540', snap: true },
   zoom:    { controls: true, wheel: true, startScale: 0.9, maxScale: 3, minScale: 0.3, scaleSpeed: 1.2 },
   theme: Blockly.Theme.defineTheme('starmade', {
@@ -160,7 +161,7 @@ window.addEventListener('load', () => {
       const langSelect = document.getElementById('languageSelect');
       if (langSelect) {
         langSelect.value = i18n.getLanguage();
-        langSelect.addEventListener('change', (e) => i18n.setLanguage(e.target.value));
+        langSelect.addEventListener('change', (e) => { i18n.setLanguage(e.target.value); initHelpPanel(i18n.getLanguage()); location.reload(); });
       }
       i18n.apply();
     } catch (e) {

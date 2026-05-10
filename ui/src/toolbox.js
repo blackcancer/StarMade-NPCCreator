@@ -174,8 +174,8 @@ export const TOOLBOX_XML = String.raw`
 `;
 
 /** Create a DOM element containing the Blockly toolbox XML. */
-export function createToolboxElement() {
+export function createToolboxElement(localizeXml = (xml) => xml) {
   const tpl = document.createElement('template');
-  tpl.innerHTML = TOOLBOX_XML.trim();
+  tpl.innerHTML = localizeXml(TOOLBOX_XML).trim();
   return tpl.content.firstElementChild;
 }

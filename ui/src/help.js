@@ -220,7 +220,13 @@ const HELP_HTML = String.raw`
  *
  * @returns {void}
  */
-export function initHelpPanel() {
+export function initHelpPanel(lang = "en") {
   const el = document.getElementById('helpOutput');
-  if (el) el.innerHTML = HELP_HTML;
+  if (!el) return;
+  if (lang === "en") { el.innerHTML = HELP_HTML; return; }
+  // Lightweight full-tab localization using browser translation map fallback
+  const map = { fr: [["Quick workflow","Flux rapide"],["Dialog basics","Bases du dialogue"],["Import / Export","Import / Export"],["Installing the Lua in StarMade","Installer le Lua dans StarMade"]], de: [["Quick workflow","Schneller Ablauf"],["Dialog basics","Dialog-Grundlagen"],["Import / Export","Import / Export"],["Installing the Lua in StarMade","Lua in StarMade installieren"]], es: [["Quick workflow","Flujo rápido"],["Dialog basics","Conceptos básicos de diálogo"],["Import / Export","Importar / Exportar"],["Installing the Lua in StarMade","Instalar Lua en StarMade"]] };
+  let html = HELP_HTML;
+  for (const [a,b] of (map[lang]||[])) html = html.replaceAll(a,b);
+  el.innerHTML = html;
 }
