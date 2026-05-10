@@ -20,7 +20,7 @@ export function showTab(id) {
 // ── Generate & display ────────────────────────────────────────────────────────
 
 /** Run Lua generation and render highlighted output/status. */
-export function generateAndShow(generateLua) {
+export function generateAndShow(generateLua, t = (k) => k) {
   const name = document.getElementById('scriptName').value || 'my-npc';
   try {
     const lua = generateLua(name);
@@ -29,24 +29,24 @@ export function generateAndShow(generateLua) {
     const nodeCount = window._npcState?.nodes?.length ?? 0;
     const hookCount = window._npcState?.hooks?.size   ?? 0;
     document.getElementById('statusBar').textContent =
-      `✓ Generated — ${nodeCount} nodes, ${hookCount} hooks, ${lua.split('\n').length} lines`;
+      `✓ ${t('generated')} — ${nodeCount} ${t('nodes')}, ${hookCount} ${t('hooks')}, ${lua.split('\n').length} ${t('lines')}`;
   } catch (e) {
     document.getElementById('luaOutput').textContent = '-- ERROR: ' + e.message;
-    document.getElementById('statusBar').textContent = '✗ Error: ' + e.message;
+    document.getElementById('statusBar').textContent = t('error') + ': ' + e.message;
   }
 }
 
 // ── Copy ──────────────────────────────────────────────────────────────────────
 
 /** Copy the current generated Lua script to the clipboard. */
-export function copyLua(generateLua) {
+export function copyLua(generateLua, t = (k) => k) {
   const name = document.getElementById('scriptName').value || 'my-npc';
   const lua  = generateLua(name);
   navigator.clipboard.writeText(lua).then(() => {
     const badge = document.getElementById('copyBadge');
     badge.style.display = 'block';
     setTimeout(() => { badge.style.display = 'none'; }, 2000);
-    document.getElementById('statusBar').textContent = '✓ Lua copied to clipboard';
+    document.getElementById('statusBar').textContent = '✓ ' + t('luaCopiedClipboard');
   }).catch(() => {
     const el = document.createElement('textarea');
     el.value = lua;
@@ -54,7 +54,7 @@ export function copyLua(generateLua) {
     el.select();
     document.execCommand('copy');
     document.body.removeChild(el);
-    document.getElementById('statusBar').textContent = '✓ Lua copied (fallback)';
+    document.getElementById('statusBar').textContent = '✓ ' + t('luaCopiedFallback');
   });
 }
 
@@ -74,7 +74,7 @@ export function downloadLua(generateLua) {
 // ── Export workspace ──────────────────────────────────────────────────────────
 
 /** Export the Blockly workspace as editable JSON. */
-export function exportWorkspace(Blockly, workspace) {
+export function exportWorkspace(Blockly, workspace, t = (k) => k) {
   const state = Blockly.serialization.workspaces.save(workspace);
   const name  = (document.getElementById('scriptName').value || 'my-npc') + '.workspace.json';
   const blob  = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
@@ -82,7 +82,7 @@ export function exportWorkspace(Blockly, workspace) {
   const a     = document.createElement('a');
   a.href = url; a.download = name; a.click();
   URL.revokeObjectURL(url);
-  document.getElementById('statusBar').textContent = '✓ Workspace exported as ' + name;
+  document.getElementById('statusBar').textContent = `✓ ${t('workspaceExportedAs')} ${name}`;
 }
 
 // ── Import workspace / Lua ────────────────────────────────────────────────────
@@ -93,7 +93,7 @@ export function triggerImportInput() {
 }
 
 /** Import a .json Blockly workspace or .lua script file. */
-export function onFileLoad(event, Blockly, workspace, generateLua) {
+export function onFileLoad(event, Blockly, workspace, generateLua, t = (k) => k) {
   const file = event.target.files[0];
   if (!file) return;
   const reader = new FileReader();
@@ -108,12 +108,12 @@ export function onFileLoad(event, Blockly, workspace, generateLua) {
         workspace.clear();
         Blockly.serialization.workspaces.load(state, workspace);
         workspace.scrollCenter();
-        generateAndShow(generateLua);
-        document.getElementById('statusBar').textContent = '✓ Lua imported: ' + file.name;
+        generateAndShow(generateLua, t);
+        document.getElementById('statusBar').textContent = `✓ ${t('luaImported')}: ${file.name}`;
       } catch (parseErr) {
         document.getElementById('luaOutput').innerHTML = highlight(lua);
         showTab('lua');
-        document.getElementById('statusBar').textContent = '⚠ Parse warning: ' + parseErr.message + ' — showing Lua source';
+        document.getElementById('statusBar').textContent = `⚠ ${t('parseWarning')}: ${parseErr.message} — ${t('showingLuaSource')}`;
       }
     };
     reader.readAsText(file);
@@ -127,12 +127,12 @@ export function onFileLoad(event, Blockly, workspace, generateLua) {
       workspace.clear();
       Blockly.serialization.workspaces.load(state, workspace);
       workspace.scrollCenter();
-      generateAndShow(generateLua);
+      generateAndShow(generateLua, t);
       const baseName = file.name.replace(/\.workspace\.json$/, '').replace(/\.json$/, '');
       if (baseName) document.getElementById('scriptName').value = baseName;
-      document.getElementById('statusBar').textContent = '✓ Workspace imported: ' + file.name;
+      document.getElementById('statusBar').textContent = `✓ ${t('workspaceImported')}: ${file.name}`;
     } catch (err) {
-      document.getElementById('statusBar').textContent = '✗ Import error: ' + err.message;
+      document.getElementById('statusBar').textContent = `${t('importError')}: ${err.message}`;
       alert('Failed to import workspace:\n' + err.message);
     }
   };
@@ -143,24 +143,24 @@ export function onFileLoad(event, Blockly, workspace, generateLua) {
 // ── Clear ─────────────────────────────────────────────────────────────────────
 
 /** Clear all blocks after user confirmation. */
-export function clearWorkspace(workspace) {
-  if (confirm('Clear all blocks?')) workspace.clear();
-  document.getElementById('luaOutput').textContent = '-- Workspace cleared.';
-  document.getElementById('statusBar').textContent = 'Workspace cleared.';
+export function clearWorkspace(workspace, t = (k) => k) {
+  if (confirm(t('clearAllBlocksConfirm'))) workspace.clear();
+  document.getElementById('luaOutput').textContent = '-- ' + t('workspaceCleared') + '.';
+  document.getElementById('statusBar').textContent = t('workspaceCleared') + '.';
 }
 
 // ── Load example ──────────────────────────────────────────────────────────────
 
 /** Load a built-in example workspace by name. */
-export function loadExample(name, Blockly, workspace, generateLua) {
+export function loadExample(name, Blockly, workspace, generateLua, t = (k) => k) {
   workspace.clear();
   const state = examples[name] || examples['merchant'];
   try {
     Blockly.serialization.workspaces.load(state, workspace);
   } catch (e) {
-    document.getElementById('statusBar').textContent = 'Could not load example: ' + e.message;
+    document.getElementById('statusBar').textContent = `${t('couldNotLoadExample')}: ${e.message}`;
     return;
   }
   workspace.scrollCenter();
-  generateAndShow(generateLua);
+  generateAndShow(generateLua, t);
 }

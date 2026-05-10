@@ -16,14 +16,14 @@
   <div class="brand">
     <div class="brand-title">
       <h1>⚙ StarMade NPC Creator</h1>
-      <div class="subtitle">Visual Lua dialog builder</div>
+      <div class="subtitle" data-i18n="subtitle">Visual Lua dialog builder</div>
     </div>
   </div>
 
   <div class="hdivider"></div>
 
   <div class="script-name-wrap">
-    <label for="scriptName">Script</label>
+    <label for="scriptName" data-i18n="script">Script</label>
     <input id="scriptName" type="text" value="my-npc" placeholder="my-npc" autocomplete="off" spellcheck="false" />
   </div>
 
@@ -45,18 +45,30 @@
       <option value="guild_faction_hub">🏛 Guild Faction Hub</option>
     </optgroup>
   </select>
-  <button class="btn btn-secondary" onclick="loadExample(document.getElementById('exampleSelect').value)">Load example</button>
+  <button class="btn btn-secondary" data-i18n="loadExample" onclick="loadExample(document.getElementById('exampleSelect').value)">Load example</button>
 
   <div class="hdivider"></div>
 
-  <button class="btn btn-secondary" onclick="importWorkspace()">📥 Import</button>
-  <button class="btn btn-secondary" onclick="exportWorkspace()">📤 Export</button>
-  <button class="btn btn-secondary" onclick="clearWorkspace()">🗑 Clear</button>
+  <button class="btn btn-secondary" data-i18n="import" onclick="importWorkspace()">📥 Import</button>
+  <button class="btn btn-secondary" data-i18n="export" onclick="exportWorkspace()">📤 Export</button>
+  <button class="btn btn-secondary" data-i18n="clear" onclick="clearWorkspace()">🗑 Clear</button>
+
+
+  <div class="hdivider"></div>
+  <div class="script-name-wrap">
+    <label for="languageSelect" data-i18n="langLabel">Language</label>
+    <select id="languageSelect">
+      <option value="en">English</option>
+      <option value="fr">Français</option>
+      <option value="de">Deutsch</option>
+      <option value="es">Español</option>
+    </select>
+  </div>
 
   <div class="spacer"></div>
 
-  <button class="btn btn-success" onclick="copyLua()">📋 Copy Lua</button>
-  <button class="btn btn-success" onclick="downloadLua()">⬇ Download</button>
+  <button class="btn btn-success" data-i18n="copyLua" onclick="copyLua()">📋 Copy Lua</button>
+  <button class="btn btn-success" data-i18n="download" onclick="downloadLua()">⬇ Download</button>
 
   <input type="file" id="fileInput" accept=".json,.lua" style="display:none" onchange="onFileLoad(event)" />
 </header>
@@ -67,23 +79,23 @@
 
   <div class="output-panel">
     <div class="output-tabs">
-      <div class="tab active" onclick="showTab('lua')">Lua Output</div>
-      <div class="tab"       onclick="showTab('help')">Help</div>
+      <div class="tab active" data-i18n="luaOutput" onclick="showTab('lua')">Lua Output</div>
+      <div class="tab" data-i18n="help" onclick="showTab('help')">Help</div>
     </div>
 
     <div class="tab-content active" id="tab-lua">
-      <pre id="luaOutput">-- Drag blocks from the toolbox to build your NPC dialog.</pre>
+      <pre id="luaOutput" data-i18n="workspaceHint">-- Drag blocks from the toolbox to build your NPC dialog.</pre>
     </div>
 
     <div class="tab-content" id="tab-help">
       <div id="helpOutput" class="help-doc"></div>
     </div>
 
-    <div id="statusBar">Ready — drag blocks from the toolbox.</div>
+    <div id="statusBar" data-i18n="ready">Ready — drag blocks from the toolbox.</div>
   </div>
 </div>
 
-<div id="copyBadge">✓ Copied!</div>
+<div id="copyBadge" data-i18n="copied">✓ Copied!</div>
 <!-- Toolbox is provided by ui/src/toolbox.js -->
 
 

@@ -12,6 +12,7 @@ import { showTab, generateAndShow, copyLua, downloadLua,
          clearWorkspace, loadExample }                from './ui.js';
 import { initHelpPanel }                              from './help.js';
 import { createToolboxElement }                       from './toolbox.js';
+import { createI18n }                                 from './i18n.js';
 
 // ── Inline the core generator functions from the monolith ─────────────────────
 // (processGreeting, processActionBlock, buildConditionExpression are in core.js)
@@ -29,6 +30,7 @@ const Blockly = window.Blockly;
 
 registerAllBlocks(Blockly);
 initHelpPanel();
+const i18n = createI18n();
 
 // ── Toolbox ───────────────────────────────────────────────────────────────────
 
@@ -131,13 +133,13 @@ function generateLua(scriptName) {
 // ── Expose to HTML onclick attributes ────────────────────────────────────────
 
 window.showTab        = showTab;
-window.copyLua        = ()  => copyLua(generateLua);
+window.copyLua        = ()  => copyLua(generateLua, i18n.t);
 window.downloadLua    = ()  => downloadLua(generateLua);
-window.exportWorkspace = () => exportWorkspace(Blockly, workspace);
+window.exportWorkspace = () => exportWorkspace(Blockly, workspace, i18n.t);
 window.importWorkspace = () => triggerImportInput();
-window.clearWorkspace = ()  => clearWorkspace(workspace);
-window.onFileLoad     = (e) => onFileLoad(e, Blockly, workspace, generateLua);
-window.loadExample    = (n) => loadExample(n, Blockly, workspace, generateLua);
+window.clearWorkspace = ()  => clearWorkspace(workspace, i18n.t);
+window.onFileLoad     = (e) => onFileLoad(e, Blockly, workspace, generateLua, i18n.t);
+window.loadExample    = (n) => loadExample(n, Blockly, workspace, generateLua, i18n.t);
 
 // ── Auto-generate on change ───────────────────────────────────────────────────
 
@@ -145,7 +147,7 @@ workspace.addChangeListener(() => {
   syncVariableDisplays(workspace);
   updateVariableReferenceWarnings(workspace);
   if (workspace.getAllBlocks(false).some(b => b.type === 'npc_greeting' || b.type === 'npc_cond_greeting')) {
-    generateAndShow(generateLua);
+    generateAndShow(generateLua, i18n.t);
   }
 });
 
@@ -154,9 +156,15 @@ workspace.addChangeListener(() => {
 window.addEventListener('load', () => {
   requestAnimationFrame(() => requestAnimationFrame(() => {
     try {
-      loadExample('welcome_kiosk', Blockly, workspace, generateLua);
+      loadExample('welcome_kiosk', Blockly, workspace, generateLua, i18n.t);
+      const langSelect = document.getElementById('languageSelect');
+      if (langSelect) {
+        langSelect.value = i18n.getLanguage();
+        langSelect.addEventListener('change', (e) => i18n.setLanguage(e.target.value));
+      }
+      i18n.apply();
     } catch (e) {
-      setTimeout(() => loadExample('welcome_kiosk', Blockly, workspace, generateLua), 500);
+      setTimeout(() => loadExample('welcome_kiosk', Blockly, workspace, generateLua, i18n.t), 500);
     }
   }));
 });
