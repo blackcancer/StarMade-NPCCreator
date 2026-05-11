@@ -1,7 +1,7 @@
 {
   "name": "starmade-npccreator",
-  "version": "1.0.0",
-  "description": "TypeScript fluent API to generate StarMade NPC Lua dialog scripts \u2014 supports SQLite state, advanced branching, and full dialogObject coverage",
+  "version": "1.0.1",
+  "description": "TypeScript fluent API to generate StarMade NPC Lua dialog scripts — supports SQLite state, advanced branching, and full dialogObject coverage",
   "type": "module",
   "license": "MIT",
   "author": "InitSysRev <init-sys-rev@hotmail.com>",
