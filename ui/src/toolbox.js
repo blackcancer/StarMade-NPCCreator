@@ -1,5 +1,7 @@
 // toolbox.js — Blockly toolbox XML kept out of shell.html
 
+import { localizeToolboxXml } from './i18n.js';
+
 export const TOOLBOX_XML = String.raw`
 <xml id="toolbox" style="display:none">
 
@@ -176,6 +178,6 @@ export const TOOLBOX_XML = String.raw`
 /** Create a DOM element containing the Blockly toolbox XML. */
 export function createToolboxElement() {
   const tpl = document.createElement('template');
-  tpl.innerHTML = TOOLBOX_XML.trim();
+  tpl.innerHTML = localizeToolboxXml(TOOLBOX_XML.trim());
   return tpl.content.firstElementChild;
 }

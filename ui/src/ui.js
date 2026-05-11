@@ -4,6 +4,7 @@
 import { highlight }              from './highlight.js';
 import { parseLuaToBlocklyState } from './parser/lua-to-blocks.js';
 import { examples }               from './examples/index.js';
+import { localizeWorkspaceState, t } from './i18n.js';
 
 // ── Tabs ──────────────────────────────────────────────────────────────────────
 
@@ -29,10 +30,14 @@ export function generateAndShow(generateLua) {
     const nodeCount = window._npcState?.nodes?.length ?? 0;
     const hookCount = window._npcState?.hooks?.size   ?? 0;
     document.getElementById('statusBar').textContent =
-      `✓ Generated — ${nodeCount} nodes, ${hookCount} hooks, ${lua.split('\n').length} lines`;
+      t('✓ Generated — {nodes} nodes, {hooks} hooks, {lines} lines', {
+        nodes: nodeCount,
+        hooks: hookCount,
+        lines: lua.split('\n').length,
+      });
   } catch (e) {
-    document.getElementById('luaOutput').textContent = '-- ERROR: ' + e.message;
-    document.getElementById('statusBar').textContent = '✗ Error: ' + e.message;
+    document.getElementById('luaOutput').textContent = t('-- ERROR: {message}', { message: e.message });
+    document.getElementById('statusBar').textContent = t('✗ Error: {message}', { message: e.message });
   }
 }
 
@@ -46,7 +51,7 @@ export function copyLua(generateLua) {
     const badge = document.getElementById('copyBadge');
     badge.style.display = 'block';
     setTimeout(() => { badge.style.display = 'none'; }, 2000);
-    document.getElementById('statusBar').textContent = '✓ Lua copied to clipboard';
+    document.getElementById('statusBar').textContent = t('✓ Lua copied to clipboard');
   }).catch(() => {
     const el = document.createElement('textarea');
     el.value = lua;
@@ -54,7 +59,7 @@ export function copyLua(generateLua) {
     el.select();
     document.execCommand('copy');
     document.body.removeChild(el);
-    document.getElementById('statusBar').textContent = '✓ Lua copied (fallback)';
+    document.getElementById('statusBar').textContent = t('✓ Lua copied (fallback)');
   });
 }
 
@@ -82,7 +87,7 @@ export function exportWorkspace(Blockly, workspace) {
   const a     = document.createElement('a');
   a.href = url; a.download = name; a.click();
   URL.revokeObjectURL(url);
-  document.getElementById('statusBar').textContent = '✓ Workspace exported as ' + name;
+  document.getElementById('statusBar').textContent = t('✓ Workspace exported as {name}', { name });
 }
 
 // ── Import workspace / Lua ────────────────────────────────────────────────────
@@ -109,11 +114,11 @@ export function onFileLoad(event, Blockly, workspace, generateLua) {
         Blockly.serialization.workspaces.load(state, workspace);
         workspace.scrollCenter();
         generateAndShow(generateLua);
-        document.getElementById('statusBar').textContent = '✓ Lua imported: ' + file.name;
+        document.getElementById('statusBar').textContent = t('✓ Lua imported: {name}', { name: file.name });
       } catch (parseErr) {
         document.getElementById('luaOutput').innerHTML = highlight(lua);
         showTab('lua');
-        document.getElementById('statusBar').textContent = '⚠ Parse warning: ' + parseErr.message + ' — showing Lua source';
+        document.getElementById('statusBar').textContent = t('⚠ Parse warning: {message} — showing Lua source', { message: parseErr.message });
       }
     };
     reader.readAsText(file);
@@ -130,10 +135,10 @@ export function onFileLoad(event, Blockly, workspace, generateLua) {
       generateAndShow(generateLua);
       const baseName = file.name.replace(/\.workspace\.json$/, '').replace(/\.json$/, '');
       if (baseName) document.getElementById('scriptName').value = baseName;
-      document.getElementById('statusBar').textContent = '✓ Workspace imported: ' + file.name;
+      document.getElementById('statusBar').textContent = t('✓ Workspace imported: {name}', { name: file.name });
     } catch (err) {
-      document.getElementById('statusBar').textContent = '✗ Import error: ' + err.message;
-      alert('Failed to import workspace:\n' + err.message);
+      document.getElementById('statusBar').textContent = t('✗ Import error: {message}', { message: err.message });
+      alert(t('Failed to import workspace:\n{message}', { message: err.message }));
     }
   };
   reader.readAsText(file);
@@ -144,9 +149,9 @@ export function onFileLoad(event, Blockly, workspace, generateLua) {
 
 /** Clear all blocks after user confirmation. */
 export function clearWorkspace(workspace) {
-  if (confirm('Clear all blocks?')) workspace.clear();
-  document.getElementById('luaOutput').textContent = '-- Workspace cleared.';
-  document.getElementById('statusBar').textContent = 'Workspace cleared.';
+  if (confirm(t('Clear all blocks?'))) workspace.clear();
+  document.getElementById('luaOutput').textContent = t('-- Workspace cleared.');
+  document.getElementById('statusBar').textContent = t('Workspace cleared.');
 }
 
 // ── Load example ──────────────────────────────────────────────────────────────
@@ -156,9 +161,9 @@ export function loadExample(name, Blockly, workspace, generateLua) {
   workspace.clear();
   const state = examples[name] || examples['merchant'];
   try {
-    Blockly.serialization.workspaces.load(state, workspace);
+    Blockly.serialization.workspaces.load(localizeWorkspaceState(state), workspace);
   } catch (e) {
-    document.getElementById('statusBar').textContent = 'Could not load example: ' + e.message;
+    document.getElementById('statusBar').textContent = t('Could not load example: {message}', { message: e.message });
     return;
   }
   workspace.scrollCenter();

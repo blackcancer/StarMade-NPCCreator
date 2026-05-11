@@ -12,6 +12,8 @@ import { showTab, generateAndShow, copyLua, downloadLua,
          clearWorkspace, loadExample }                from './ui.js';
 import { initHelpPanel }                              from './help.js';
 import { createToolboxElement }                       from './toolbox.js';
+import { applyStaticI18n, installBlocklyI18n, t,
+         wireLocaleSelector }                         from './i18n.js';
 
 // ── Inline the core generator functions from the monolith ─────────────────────
 // (processGreeting, processActionBlock, buildConditionExpression are in core.js)
@@ -27,6 +29,9 @@ const Blockly = window.Blockly;
 
 // ── Register all custom blocks ────────────────────────────────────────────────
 
+installBlocklyI18n(Blockly);
+applyStaticI18n();
+wireLocaleSelector();
 registerAllBlocks(Blockly);
 initHelpPanel();
 
@@ -68,7 +73,7 @@ function generateLua(scriptName) {
   // Validate variable references
   const missingVars = getMissingConnectedVariables(allBlocks);
   if (missingVars.length > 0)
-    throw new Error('Undefined variable references: ' + missingVars.join(', ') + '. Add matching Variable block(s).');
+    throw new Error(t('Undefined variable references: {vars}. Add matching Variable block(s).', { vars: missingVars.join(', ') }));
 
   // Collect standalone lua vars + sqlite tables
   for (const b of allBlocks) {
@@ -115,7 +120,7 @@ function generateLua(scriptName) {
     b.type === 'npc_greeting' || b.type === 'npc_cond_greeting'
   );
   if (greetings.length === 0)
-    return '-- ERROR: Add a "💬 Greeting" or "🔀 Conditional Greeting" block to start your dialog.';
+    return t('-- ERROR: Add a "💬 Greeting" or "🔀 Conditional Greeting" block to start your dialog.');
 
   // Both processGreeting and processCondGreeting are dispatched via processActionBlock
   if (greetings[0].type === 'npc_cond_greeting') {

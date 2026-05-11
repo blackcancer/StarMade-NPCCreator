@@ -16,47 +16,59 @@
   <div class="brand">
     <div class="brand-title">
       <h1>⚙ StarMade NPC Creator</h1>
-      <div class="subtitle">Visual Lua dialog builder</div>
+      <div class="subtitle" data-i18n="Visual Lua dialog builder">Visual Lua dialog builder</div>
     </div>
   </div>
 
   <div class="hdivider"></div>
 
   <div class="script-name-wrap">
-    <label for="scriptName">Script</label>
+    <label for="scriptName" data-i18n="Script">Script</label>
     <input id="scriptName" type="text" value="my-npc" placeholder="my-npc" autocomplete="off" spellcheck="false" />
   </div>
 
   <div class="hdivider"></div>
 
-  <select id="exampleSelect" title="Load an example">
-    <optgroup label="── Basic">
-      <option value="welcome_kiosk">📋 Welcome Kiosk</option>
-      <option value="toll_booth">🚧 Toll Booth</option>
+  <select id="exampleSelect" title="Load an example" data-i18n-title="Load an example">
+    <optgroup label="── Basic" data-i18n-label="── Basic">
+      <option value="welcome_kiosk" data-i18n="📋 Welcome Kiosk">📋 Welcome Kiosk</option>
+      <option value="toll_booth" data-i18n="🚧 Toll Booth">🚧 Toll Booth</option>
     </optgroup>
-    <optgroup label="── Intermediate">
-      <option value="crew_recruiter">👥 Crew Recruiter</option>
+    <optgroup label="── Intermediate" data-i18n-label="── Intermediate">
+      <option value="crew_recruiter" data-i18n="👥 Crew Recruiter">👥 Crew Recruiter</option>
     </optgroup>
-    <optgroup label="── Advanced">
-      <option value="delivery_quest">📜 Delivery Quest</option>
-      <option value="reputation_shop">⭐ Reputation Shop</option>
+    <optgroup label="── Advanced" data-i18n-label="── Advanced">
+      <option value="delivery_quest" data-i18n="📜 Delivery Quest">📜 Delivery Quest</option>
+      <option value="reputation_shop" data-i18n="⭐ Reputation Shop">⭐ Reputation Shop</option>
     </optgroup>
-    <optgroup label="── Very Advanced">
-      <option value="guild_faction_hub">🏛 Guild Faction Hub</option>
+    <optgroup label="── Very Advanced" data-i18n-label="── Very Advanced">
+      <option value="guild_faction_hub" data-i18n="🏛 Guild Faction Hub">🏛 Guild Faction Hub</option>
     </optgroup>
   </select>
-  <button class="btn btn-secondary" onclick="loadExample(document.getElementById('exampleSelect').value)">Load example</button>
+  <button class="btn btn-secondary" onclick="loadExample(document.getElementById('exampleSelect').value)" data-i18n="Load example">Load example</button>
 
   <div class="hdivider"></div>
 
-  <button class="btn btn-secondary" onclick="importWorkspace()">📥 Import</button>
-  <button class="btn btn-secondary" onclick="exportWorkspace()">📤 Export</button>
-  <button class="btn btn-secondary" onclick="clearWorkspace()">🗑 Clear</button>
+  <button class="btn btn-secondary" onclick="importWorkspace()" data-i18n="📥 Import">📥 Import</button>
+  <button class="btn btn-secondary" onclick="exportWorkspace()" data-i18n="📤 Export">📤 Export</button>
+  <button class="btn btn-secondary" onclick="clearWorkspace()" data-i18n="🗑 Clear">🗑 Clear</button>
 
   <div class="spacer"></div>
 
-  <button class="btn btn-success" onclick="copyLua()">📋 Copy Lua</button>
-  <button class="btn btn-success" onclick="downloadLua()">⬇ Download</button>
+  <div class="script-name-wrap">
+    <label for="languageSelect" data-i18n="Language">Language</label>
+    <select id="languageSelect" title="Language" data-i18n-title="Language">
+      <option value="en" data-i18n="English">English</option>
+      <option value="fr" data-i18n="Français">Français</option>
+      <option value="de" data-i18n="German">Deutsch</option>
+      <option value="es" data-i18n="Spanish">Español</option>
+      <option value="ru" data-i18n="Russian">Русский</option>
+      <option value="ja" data-i18n="Japanese">日本語</option>
+    </select>
+  </div>
+
+  <button class="btn btn-success" onclick="copyLua()" data-i18n="📋 Copy Lua">📋 Copy Lua</button>
+  <button class="btn btn-success" onclick="downloadLua()" data-i18n="⬇ Download">⬇ Download</button>
 
   <input type="file" id="fileInput" accept=".json,.lua" style="display:none" onchange="onFileLoad(event)" />
 </header>
@@ -67,23 +79,23 @@
 
   <div class="output-panel">
     <div class="output-tabs">
-      <div class="tab active" onclick="showTab('lua')">Lua Output</div>
-      <div class="tab"       onclick="showTab('help')">Help</div>
+      <div class="tab active" onclick="showTab('lua')" data-i18n="Lua Output">Lua Output</div>
+      <div class="tab"       onclick="showTab('help')" data-i18n="Help">Help</div>
     </div>
 
     <div class="tab-content active" id="tab-lua">
-      <pre id="luaOutput">-- Drag blocks from the toolbox to build your NPC dialog.</pre>
+      <pre id="luaOutput" data-i18n="-- Drag blocks from the toolbox to build your NPC dialog.">-- Drag blocks from the toolbox to build your NPC dialog.</pre>
     </div>
 
     <div class="tab-content" id="tab-help">
       <div id="helpOutput" class="help-doc"></div>
     </div>
 
-    <div id="statusBar">Ready — drag blocks from the toolbox.</div>
+    <div id="statusBar" data-i18n="Ready — drag blocks from the toolbox.">Ready — drag blocks from the toolbox.</div>
   </div>
 </div>
 
-<div id="copyBadge">✓ Copied!</div>
+<div id="copyBadge" data-i18n="✓ Copied!">✓ Copied!</div>
 <!-- Toolbox is provided by ui/src/toolbox.js -->
 
 
